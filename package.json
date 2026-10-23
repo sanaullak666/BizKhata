@@ -10,6 +10,7 @@
     "build": "cd client && npm install && npm run build",
     "seed": "node server/src/seed/seedData.js",
     "db:reset": "node server/src/seed/resetDb.js",
+    "db:clean": "node server/src/seed/cleanTidb.js",
     "test": "node server/test-suite.js"
   },
   "dependencies": {
