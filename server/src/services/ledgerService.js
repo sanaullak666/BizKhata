@@ -11,10 +11,10 @@ function roundMoney(num) {
  * Atomically recalculate all running balances for a customer
  * and update the customer's current_balance.
  */
-function recalculateCustomerLedger(customerId) {
-  const recalculateTx = db.transaction(() => {
+async function recalculateCustomerLedger(customerId) {
+  const recalculateTx = db.transaction(async () => {
     // 1. Fetch customer opening balance details
-    const customer = db.prepare(`
+    const customer = await db.prepare(`
       SELECT id, opening_balance_type, opening_balance 
       FROM customers 
       WHERE id = ?
@@ -32,7 +32,7 @@ function recalculateCustomerLedger(customerId) {
       : -roundMoney(customer.opening_balance || 0);
 
     // 2. Fetch all transactions for this customer ordered chronologically
-    const transactions = db.prepare(`
+    const transactions = await db.prepare(`
       SELECT id, type, amount 
       FROM transactions 
       WHERE customer_id = ? 
@@ -53,11 +53,11 @@ function recalculateCustomerLedger(customerId) {
       } else if (tx.type === 'RECEIVED') {
         currentBalance = roundMoney(currentBalance - amount);
       }
-      updateTxBalance.run(currentBalance, tx.id);
+      await updateTxBalance.run(currentBalance, tx.id);
     }
 
     // 4. Update the customer's current_balance field
-    db.prepare(`
+    await db.prepare(`
       UPDATE customers 
       SET current_balance = ?, updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
@@ -66,14 +66,14 @@ function recalculateCustomerLedger(customerId) {
     return currentBalance;
   });
 
-  return recalculateTx();
+  return await recalculateTx();
 }
 
 /**
  * Get ledger statement for a customer in a date range
  */
-function getCustomerStatement(customerId, fromDate, toDate) {
-  const customer = db.prepare(`
+async function getCustomerStatement(customerId, fromDate, toDate) {
+  const customer = await db.prepare(`
     SELECT * FROM customers WHERE id = ?
   `).get(customerId);
 
@@ -98,7 +98,7 @@ function getCustomerStatement(customerId, fromDate, toDate) {
 
   query += ` ORDER BY t.date ASC, t.time ASC, t.created_at ASC`;
 
-  const transactions = db.prepare(query).all(...params);
+  const transactions = await db.prepare(query).all(...params);
 
   // Calculate opening balance at 'fromDate'
   let openingAtFromDate = customer.opening_balance_type === 'owe_business'
@@ -106,7 +106,7 @@ function getCustomerStatement(customerId, fromDate, toDate) {
     : -roundMoney(customer.opening_balance || 0);
 
   if (fromDate) {
-    const priorTotals = db.prepare(`
+    const priorTotals = await db.prepare(`
       SELECT 
         COALESCE(SUM(CASE WHEN type = 'GAVE' THEN amount ELSE 0 END), 0) as prior_gave,
         COALESCE(SUM(CASE WHEN type = 'RECEIVED' THEN amount ELSE 0 END), 0) as prior_received

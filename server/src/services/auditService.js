@@ -1,12 +1,12 @@
 const { db } = require('../config/database');
 const crypto = require('crypto');
 
-function logAudit({ businessId, userId, userName, action, entityType, entityId, details, req }) {
+async function logAudit({ businessId, userId, userName, action, entityType, entityId, details, req }) {
   try {
     const id = 'aud_' + crypto.randomBytes(8).toString('hex');
     const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1') : 'system';
     
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO audit_logs (id, business_id, user_id, user_name, action, entity_type, entity_id, details, ip_address)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -25,10 +25,10 @@ function logAudit({ businessId, userId, userName, action, entityType, entityId, 
   }
 }
 
-function notifyUser({ businessId, userId, title, message, type = 'info', link = null }) {
+async function notifyUser({ businessId, userId, title, message, type = 'info', link = null }) {
   try {
     const id = 'notif_' + crypto.randomBytes(8).toString('hex');
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO notifications (id, business_id, user_id, title, message, type, link)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(id, businessId, userId, title, message, type, link);
@@ -37,11 +37,11 @@ function notifyUser({ businessId, userId, title, message, type = 'info', link = 
   }
 }
 
-function notifyOwner({ businessId, title, message, type = 'info', link = null }) {
+async function notifyOwner({ businessId, title, message, type = 'info', link = null }) {
   try {
-    const owners = db.prepare(`SELECT id FROM users WHERE business_id = ? AND role = 'owner'`).all(businessId);
+    const owners = await db.prepare(`SELECT id FROM users WHERE business_id = ? AND role = 'owner'`).all(businessId);
     for (const owner of owners) {
-      notifyUser({ businessId, userId: owner.id, title, message, type, link });
+      await notifyUser({ businessId, userId: owner.id, title, message, type, link });
     }
   } catch (err) {
     console.error('Notify owner error:', err.message);

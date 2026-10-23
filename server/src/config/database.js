@@ -1,210 +1,245 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const mysql = require('mysql2/promise');
+const { AsyncLocalStorage } = require('async_hooks');
 
-const isVercel = !!process.env.VERCEL;
+const DB_HOST = process.env.TIDB_HOST || process.env.DB_HOST || 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com';
+const DB_PORT = parseInt(process.env.TIDB_PORT || process.env.DB_PORT || '4000', 10);
+const DB_USER = process.env.TIDB_USER || process.env.DB_USER || 'U32xJ4R96dasLqF.root';
+const DB_PASSWORD = process.env.TIDB_PASSWORD || process.env.DB_PASSWORD || 'uOW8cSZNTWy7TRBl';
+const DB_NAME = process.env.TIDB_DATABASE || process.env.DB_NAME || 'khataflow';
 
-let dbPath;
-if (isVercel) {
-  const tmpDir = '/tmp';
-  dbPath = path.join(tmpDir, 'khataflow.db');
+const pool = mysql.createPool({
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  ssl: {
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: true
+  },
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  decimalNumbers: true
+});
 
-  // Copy bundled database to /tmp on cold start if not present
-  if (!fs.existsSync(dbPath)) {
-    const candidatePaths = [
-      path.join(__dirname, '../../data/khataflow.db'),
-      path.join(__dirname, '../data/khataflow.db'),
-      path.join(process.cwd(), 'server/data/khataflow.db'),
-      path.join(process.cwd(), 'data/khataflow.db'),
-    ];
-    for (const candidate of candidatePaths) {
-      if (fs.existsSync(candidate)) {
-        try {
-          fs.copyFileSync(candidate, dbPath);
-          console.log(`Copied bundled db from ${candidate} to ${dbPath}`);
-          break;
-        } catch (e) {
-          console.warn('Failed to copy bundled db to /tmp:', e.message);
-        }
+const als = new AsyncLocalStorage();
+
+function convertSqliteToMysql(sql) {
+  let res = sql;
+  // date('now', '-14 days') -> (CURDATE() - INTERVAL 14 DAY)
+  res = res.replace(/date\(\s*'now'\s*,\s*'-(\d+)\s+days'\s*\)/gi, '(CURDATE() - INTERVAL $1 DAY)');
+  // date('now', '+14 days') -> (CURDATE() + INTERVAL 14 DAY)
+  res = res.replace(/date\(\s*'now'\s*,\s*'\+(\d+)\s+days'\s*\)/gi, '(CURDATE() + INTERVAL $1 DAY)');
+  // date('now') -> CURDATE()
+  res = res.replace(/date\(\s*'now'\s*\)/gi, 'CURDATE()');
+  // datetime('now') -> NOW()
+  res = res.replace(/datetime\(\s*'now'\s*\)/gi, 'NOW()');
+  // strftime('%Y-%m', col) -> DATE_FORMAT(col, '%Y-%m')
+  res = res.replace(/strftime\(\s*('[^']+')\s*,\s*([a-zA-Z0-9_\.]+)\s*\)/gi, 'DATE_FORMAT($2, $1)');
+  // strftime(?, col) -> DATE_FORMAT(col, ?)
+  res = res.replace(/strftime\(\s*\?\s*,\s*([a-zA-Z0-9_\.]+)\s*\)/gi, 'DATE_FORMAT($1, ?)');
+  return res;
+}
+
+function sanitizeParams(args) {
+  const flat = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+  return flat.map(p => (p === undefined ? null : p));
+}
+
+const db = {
+  pool,
+  convertSqliteToMysql,
+  prepare: (sql) => {
+    const converted = convertSqliteToMysql(sql);
+    return {
+      get: async (...args) => {
+        const params = sanitizeParams(args);
+        const conn = als.getStore() || pool;
+        const [rows] = await conn.query(converted, params);
+        return rows && rows.length > 0 ? rows[0] : null;
+      },
+      all: async (...args) => {
+        const params = sanitizeParams(args);
+        const conn = als.getStore() || pool;
+        const [rows] = await conn.query(converted, params);
+        return rows || [];
+      },
+      run: async (...args) => {
+        const params = sanitizeParams(args);
+        const conn = als.getStore() || pool;
+        const [result] = await conn.query(converted, params);
+        return {
+          changes: result ? result.affectedRows : 0,
+          lastInsertRowid: result ? result.insertId : 0,
+          affectedRows: result ? result.affectedRows : 0
+        };
       }
-    }
+    };
+  },
+  transaction: (fn) => {
+    return async (...args) => {
+      const conn = await pool.getConnection();
+      await conn.beginTransaction();
+      try {
+        const result = await als.run(conn, () => fn(...args));
+        await conn.commit();
+        return result;
+      } catch (err) {
+        await conn.rollback();
+        throw err;
+      } finally {
+        conn.release();
+      }
+    };
   }
-} else {
-  const dataDir = path.join(__dirname, '../../data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  dbPath = path.join(dataDir, 'khataflow.db');
-}
+};
 
-const db = new Database(dbPath);
-
-// Enable journal mode and Foreign Keys
-try {
-  if (isVercel) {
-    db.pragma('journal_mode = DELETE');
-  } else {
-    db.pragma('journal_mode = WAL');
-  }
-} catch (e) {
-  try {
-    db.pragma('journal_mode = DELETE');
-  } catch (err) {}
-}
-db.pragma('foreign_keys = ON');
-
-function initializeDatabase() {
-  const schema = `
-    -- Businesses
-    CREATE TABLE IF NOT EXISTS businesses (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      tagline TEXT,
+async function initializeDatabase() {
+  const schemaStatements = [
+    `CREATE TABLE IF NOT EXISTS businesses (
+      id VARCHAR(64) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      tagline VARCHAR(255),
       logo_url TEXT,
       address TEXT,
-      city TEXT,
-      state TEXT,
-      pincode TEXT,
-      phone TEXT,
-      email TEXT,
-      gstin TEXT,
-      upi_id TEXT,
-      bank_name TEXT,
-      bank_account_no TEXT,
-      bank_ifsc TEXT,
-      currency TEXT DEFAULT 'INR',
-      currency_symbol TEXT DEFAULT '₹',
-      invoice_prefix TEXT DEFAULT 'INV',
-      receipt_prefix TEXT DEFAULT 'REC',
+      city VARCHAR(100),
+      state VARCHAR(100),
+      pincode VARCHAR(20),
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      gstin VARCHAR(50),
+      upi_id VARCHAR(100),
+      bank_name VARCHAR(150),
+      bank_account_no VARCHAR(50),
+      bank_ifsc VARCHAR(50),
+      currency VARCHAR(10) DEFAULT 'INR',
+      currency_symbol VARCHAR(10) DEFAULT '₹',
+      invoice_prefix VARCHAR(20) DEFAULT 'INV',
+      receipt_prefix VARCHAR(20) DEFAULT 'REC',
       reminder_template TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
 
-    -- Users (Owner and Salesmen)
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('owner', 'salesman')),
-      full_name TEXT NOT NULL,
-      mobile TEXT NOT NULL,
-      email TEXT NOT NULL,
-      employee_id TEXT,
-      password_hash TEXT NOT NULL,
-      designation TEXT,
+    `CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      role VARCHAR(32) NOT NULL,
+      full_name VARCHAR(255) NOT NULL,
+      mobile VARCHAR(50) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      employee_id VARCHAR(64),
+      password_hash VARCHAR(255) NOT NULL,
+      designation VARCHAR(100),
       profile_photo TEXT,
       joining_date DATE,
       address TEXT,
-      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'suspended')),
+      status VARCHAR(32) DEFAULT 'active',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
-    );
+    )`,
 
-    -- Granular Staff Permissions
-    CREATE TABLE IF NOT EXISTS staff_permissions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT UNIQUE NOT NULL,
-      can_view_customers INTEGER DEFAULT 1,
-      can_add_customers INTEGER DEFAULT 1,
-      can_edit_customers INTEGER DEFAULT 1,
-      can_delete_customers INTEGER DEFAULT 0,
-      can_add_transactions INTEGER DEFAULT 1,
-      can_delete_transactions INTEGER DEFAULT 0,
-      can_create_invoices INTEGER DEFAULT 1,
-      can_record_collections INTEGER DEFAULT 1,
-      can_send_reminders INTEGER DEFAULT 1,
-      can_view_other_salesmen INTEGER DEFAULT 0,
-      can_view_reports INTEGER DEFAULT 0,
-      can_manage_staff INTEGER DEFAULT 0,
-      can_change_settings INTEGER DEFAULT 0,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `CREATE TABLE IF NOT EXISTS staff_permissions (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64) UNIQUE NOT NULL,
+      can_view_customers TINYINT DEFAULT 1,
+      can_add_customers TINYINT DEFAULT 1,
+      can_edit_customers TINYINT DEFAULT 1,
+      can_delete_customers TINYINT DEFAULT 0,
+      can_add_transactions TINYINT DEFAULT 1,
+      can_delete_transactions TINYINT DEFAULT 0,
+      can_create_invoices TINYINT DEFAULT 1,
+      can_record_collections TINYINT DEFAULT 1,
+      can_send_reminders TINYINT DEFAULT 1,
+      can_view_other_salesmen TINYINT DEFAULT 0,
+      can_view_reports TINYINT DEFAULT 0,
+      can_manage_staff TINYINT DEFAULT 0,
+      can_change_settings TINYINT DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+    )`,
 
-    -- Customers (Ledger Accounts)
-    CREATE TABLE IF NOT EXISTS customers (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      business_name TEXT,
-      mobile TEXT NOT NULL,
-      email TEXT,
+    `CREATE TABLE IF NOT EXISTS customers (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      business_name VARCHAR(255),
+      mobile VARCHAR(50) NOT NULL,
+      email VARCHAR(255),
       address TEXT,
-      city TEXT,
-      state TEXT,
-      pincode TEXT,
-      gstin TEXT,
-      opening_balance_type TEXT DEFAULT 'owe_business' CHECK(opening_balance_type IN ('owe_business', 'business_owes')),
-      opening_balance REAL DEFAULT 0,
-      current_balance REAL DEFAULT 0,
-      credit_limit REAL DEFAULT 0,
-      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'blocked')),
+      city VARCHAR(100),
+      state VARCHAR(100),
+      pincode VARCHAR(20),
+      gstin VARCHAR(50),
+      opening_balance_type VARCHAR(32) DEFAULT 'owe_business',
+      opening_balance DOUBLE DEFAULT 0,
+      current_balance DOUBLE DEFAULT 0,
+      credit_limit DOUBLE DEFAULT 0,
+      status VARCHAR(32) DEFAULT 'active',
       notes TEXT,
-      created_by TEXT,
+      created_by VARCHAR(64),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
-      FOREIGN KEY (created_by) REFERENCES users(id)
-    );
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )`,
 
-    -- Customer Assignments to Salesmen
-    CREATE TABLE IF NOT EXISTS customer_assignments (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT NOT NULL,
-      assigned_by TEXT NOT NULL,
+    `CREATE TABLE IF NOT EXISTS customer_assignments (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64) NOT NULL,
+      assigned_by VARCHAR(64) NOT NULL,
       assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'transferred', 'unassigned')),
-      transferred_to TEXT,
+      status VARCHAR(32) DEFAULT 'active',
+      transferred_to VARCHAR(64),
       notes TEXT,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
       FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (assigned_by) REFERENCES users(id)
-    );
+      FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE CASCADE
+    )`,
 
-    -- Transactions (YOU GAVE / YOU RECEIVED)
-    CREATE TABLE IF NOT EXISTS transactions (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT,
-      type TEXT NOT NULL CHECK(type IN ('GAVE', 'RECEIVED')),
-      amount REAL NOT NULL,
+    `CREATE TABLE IF NOT EXISTS transactions (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64),
+      type VARCHAR(32) NOT NULL,
+      amount DOUBLE NOT NULL,
       date DATE NOT NULL,
-      time TIME NOT NULL,
+      time VARCHAR(20) NOT NULL,
       description TEXT,
-      payment_method TEXT DEFAULT 'Cash' CHECK(payment_method IN ('Cash', 'UPI', 'Bank Transfer', 'Card', 'Cheque', 'Other')),
-      reference_number TEXT,
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      reference_number VARCHAR(100),
       notes TEXT,
       attachment_url TEXT,
-      running_balance REAL NOT NULL,
-      created_by TEXT NOT NULL,
+      running_balance DOUBLE NOT NULL,
+      created_by VARCHAR(64) NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-      FOREIGN KEY (salesman_id) REFERENCES users(id),
-      FOREIGN KEY (created_by) REFERENCES users(id)
-    );
+      FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )`,
 
-    -- Collections & Cash Settlement Tracking
-    CREATE TABLE IF NOT EXISTS collections (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT NOT NULL,
-      transaction_id TEXT,
-      amount REAL NOT NULL,
+    `CREATE TABLE IF NOT EXISTS collections (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64) NOT NULL,
+      transaction_id VARCHAR(64),
+      amount DOUBLE NOT NULL,
       collection_date DATE NOT NULL,
-      payment_method TEXT DEFAULT 'Cash',
-      reference_number TEXT,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'submitted', 'verified', 'rejected')),
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      reference_number VARCHAR(100),
+      status VARCHAR(32) DEFAULT 'pending',
       notes TEXT,
       submitted_at DATETIME,
-      verified_by TEXT,
+      verified_by VARCHAR(64),
       verified_at DATETIME,
       settlement_notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -212,132 +247,124 @@ function initializeDatabase() {
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
       FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL,
-      FOREIGN KEY (verified_by) REFERENCES users(id)
-    );
+      FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL
+    )`,
 
-    -- Invoices
-    CREATE TABLE IF NOT EXISTS invoices (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT,
-      invoice_number TEXT NOT NULL,
+    `CREATE TABLE IF NOT EXISTS invoices (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64),
+      invoice_number VARCHAR(100) NOT NULL,
       invoice_date DATE NOT NULL,
       due_date DATE,
-      subtotal REAL DEFAULT 0,
-      discount_amount REAL DEFAULT 0,
-      tax_amount REAL DEFAULT 0,
-      total_amount REAL NOT NULL,
-      paid_amount REAL DEFAULT 0,
-      status TEXT DEFAULT 'sent' CHECK(status IN ('draft', 'sent', 'partially_paid', 'paid', 'overdue', 'cancelled')),
+      subtotal DOUBLE DEFAULT 0,
+      discount_amount DOUBLE DEFAULT 0,
+      tax_amount DOUBLE DEFAULT 0,
+      total_amount DOUBLE NOT NULL,
+      paid_amount DOUBLE DEFAULT 0,
+      status VARCHAR(32) DEFAULT 'sent',
       notes TEXT,
       terms TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-      FOREIGN KEY (salesman_id) REFERENCES users(id)
-    );
+      FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE SET NULL
+    )`,
 
-    -- Invoice Items
-    CREATE TABLE IF NOT EXISTS invoice_items (
-      id TEXT PRIMARY KEY,
-      invoice_id TEXT NOT NULL,
-      item_name TEXT NOT NULL,
+    `CREATE TABLE IF NOT EXISTS invoice_items (
+      id VARCHAR(64) PRIMARY KEY,
+      invoice_id VARCHAR(64) NOT NULL,
+      item_name VARCHAR(255) NOT NULL,
       description TEXT,
-      quantity REAL DEFAULT 1,
-      unit_price REAL NOT NULL,
-      discount_percent REAL DEFAULT 0,
-      tax_percent REAL DEFAULT 0,
-      total_price REAL NOT NULL,
+      quantity DOUBLE DEFAULT 1,
+      unit_price DOUBLE NOT NULL,
+      discount_percent DOUBLE DEFAULT 0,
+      tax_percent DOUBLE DEFAULT 0,
+      total_price DOUBLE NOT NULL,
       FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
-    );
+    )`,
 
-    -- Receipts
-    CREATE TABLE IF NOT EXISTS receipts (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT,
-      transaction_id TEXT,
-      collection_id TEXT,
-      receipt_number TEXT NOT NULL,
+    `CREATE TABLE IF NOT EXISTS receipts (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64),
+      transaction_id VARCHAR(64),
+      collection_id VARCHAR(64),
+      receipt_number VARCHAR(100) NOT NULL,
       receipt_date DATE NOT NULL,
-      amount REAL NOT NULL,
-      payment_method TEXT DEFAULT 'Cash',
-      reference_number TEXT,
-      remaining_balance REAL NOT NULL,
+      amount DOUBLE NOT NULL,
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      reference_number VARCHAR(100),
+      remaining_balance DOUBLE NOT NULL,
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-      FOREIGN KEY (salesman_id) REFERENCES users(id),
+      FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE SET NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL,
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE SET NULL
-    );
+    )`,
 
-    -- Reminders
-    CREATE TABLE IF NOT EXISTS reminders (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      customer_id TEXT NOT NULL,
-      salesman_id TEXT NOT NULL,
-      reminder_type TEXT DEFAULT 'whatsapp' CHECK(reminder_type IN ('whatsapp', 'sms', 'email', 'manual')),
-      amount_due REAL NOT NULL,
+    `CREATE TABLE IF NOT EXISTS reminders (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      customer_id VARCHAR(64) NOT NULL,
+      salesman_id VARCHAR(64) NOT NULL,
+      reminder_type VARCHAR(32) DEFAULT 'whatsapp',
+      amount_due DOUBLE NOT NULL,
       message TEXT NOT NULL,
-      status TEXT DEFAULT 'sent',
+      status VARCHAR(32) DEFAULT 'sent',
       sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-      FOREIGN KEY (salesman_id) REFERENCES users(id)
-    );
+      FOREIGN KEY (salesman_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
 
-    -- Notifications
-    CREATE TABLE IF NOT EXISTS notifications (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      title TEXT NOT NULL,
+    `CREATE TABLE IF NOT EXISTS notifications (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
       message TEXT NOT NULL,
-      type TEXT DEFAULT 'info',
+      type VARCHAR(50) DEFAULT 'info',
       link TEXT,
-      is_read INTEGER DEFAULT 0,
+      is_read TINYINT DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+    )`,
 
-    -- Audit Logs
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id TEXT PRIMARY KEY,
-      business_id TEXT NOT NULL,
-      user_id TEXT,
-      user_name TEXT,
-      action TEXT NOT NULL,
-      entity_type TEXT NOT NULL,
-      entity_id TEXT,
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64),
+      user_name VARCHAR(255),
+      action VARCHAR(100) NOT NULL,
+      entity_type VARCHAR(100) NOT NULL,
+      entity_id VARCHAR(64),
       details TEXT,
-      ip_address TEXT,
+      ip_address VARCHAR(50),
+      user_agent TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
-    );
+    )`
+  ];
 
-    -- Indexes for high performance
-    CREATE INDEX IF NOT EXISTS idx_customers_biz ON customers(business_id);
-    CREATE INDEX IF NOT EXISTS idx_transactions_biz_cust ON transactions(business_id, customer_id);
-    CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-    CREATE INDEX IF NOT EXISTS idx_assignments_active ON customer_assignments(customer_id, salesman_id, status);
-    CREATE INDEX IF NOT EXISTS idx_collections_status ON collections(business_id, status);
-    CREATE INDEX IF NOT EXISTS idx_collections_salesman ON collections(salesman_id);
-    CREATE INDEX IF NOT EXISTS idx_invoices_biz_cust ON invoices(business_id, customer_id);
-    CREATE INDEX IF NOT EXISTS idx_audit_logs_biz ON audit_logs(business_id, created_at);
-  `;
-
-  db.exec(schema);
-  console.log('✅ SQLite Database schema initialized successfully.');
+  try {
+    for (const sql of schemaStatements) {
+      await pool.query(sql);
+    }
+    console.log('✅ TiDB Database schema initialized successfully.');
+  } catch (err) {
+    console.error('Database initialization error:', err.message);
+  }
 }
 
 module.exports = {
   db,
-  initializeDatabase,
+  pool,
+  initializeDatabase
 };

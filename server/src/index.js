@@ -24,9 +24,12 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Initialize SQLite database and seed initial business & staff data
-initializeDatabase();
-seedDatabase();
+// Initialize database schema
+initializeDatabase().catch(err => console.error('DB init error:', err));
+if (process.env.SEED_DEMO === 'true') {
+  const { seedDatabase } = require('./seed/seedData');
+  seedDatabase().catch?.(err => console.error('Seed error:', err));
+}
 
 // Route imports
 const authRoutes = require('./routes/auth');
