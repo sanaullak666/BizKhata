@@ -1,0 +1,22 @@
+{
+  "name": "khataflow",
+  "version": "1.0.0",
+  "description": "Commercial-grade Digital Khata & Field Sales Management Platform",
+  "main": "server/src/index.js",
+  "scripts": {
+    "start": "node server/src/index.js",
+    "server": "node server/src/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "test": "node server/test-suite.js"
+  },
+  "keywords": [
+    "digital-khata",
+    "ledger",
+    "field-sales",
+    "collections",
+    "fintech"
+  ],
+  "author": "Antigravity Engineering",
+  "license": "ISC"
+}
