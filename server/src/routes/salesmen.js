@@ -6,6 +6,27 @@ const { db } = require('../config/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { logAudit, notifyUser } = require('../services/auditService');
 
+// Helper to get next sequential EMP-xxx employee ID
+async function getNextEmployeeId(businessId) {
+  const existingEmployees = await db.prepare(`
+    SELECT employee_id FROM users 
+    WHERE business_id = ? AND employee_id LIKE 'EMP-%'
+  `).all(businessId);
+
+  let maxNum = 0;
+  for (const emp of existingEmployees) {
+    if (emp.employee_id) {
+      const match = String(emp.employee_id).match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    }
+  }
+
+  return `EMP-${String(maxNum + 1).padStart(3, '0')}`;
+}
+
 // Get all salesmen with live performance stats
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -96,7 +117,9 @@ router.get('/', authenticateToken, async (req, res) => {
       };
     }));
 
-    res.json({ salesmen: salesmenWithStats });
+    const nextEmployeeId = await getNextEmployeeId(req.businessId);
+
+    res.json({ salesmen: salesmenWithStats, next_employee_id: nextEmployeeId });
   } catch (err) {
     console.error('List salesmen error:', err);
     res.status(500).json({ error: err.message || 'Error fetching salesmen.' });
@@ -219,6 +242,7 @@ router.post('/', authenticateToken, requireRole('owner'), async (req, res) => {
 
     const newSalesmanId = 'usr_sales_' + crypto.randomBytes(6).toString('hex');
     const passwordHash = bcrypt.hashSync(password, 10);
+    const autoEmployeeId = await getNextEmployeeId(req.businessId);
 
     const createTx = db.transaction(async () => {
       await db.prepare(`
@@ -232,7 +256,7 @@ router.post('/', authenticateToken, requireRole('owner'), async (req, res) => {
         full_name,
         mobile,
         email || `${mobile}@khataflow.local`,
-        employee_id || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+        autoEmployeeId,
         passwordHash,
         designation || 'Field Sales Executive',
         profile_photo || null,
@@ -261,7 +285,7 @@ router.post('/', authenticateToken, requireRole('owner'), async (req, res) => {
       action: 'Salesman Added',
       entityType: 'User',
       entityId: newSalesmanId,
-      details: `Added new salesman ${full_name} (${employee_id || 'Staff'}).`,
+      details: `Added new salesman ${full_name} (${autoEmployeeId}).`,
       req,
     });
 

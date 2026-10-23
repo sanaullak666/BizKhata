@@ -21,6 +21,7 @@ export function SalesmenPage() {
   // Add/Edit Salesman Modal
   const [showModal, setShowModal] = useState(false);
   const [editingSalesman, setEditingSalesman] = useState(null);
+  const [nextEmployeeId, setNextEmployeeId] = useState('EMP-001');
   const [formData, setFormData] = useState({
     full_name: '',
     mobile: '',
@@ -34,11 +35,31 @@ export function SalesmenPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  const calculateNextEmployeeId = (list = salesmen) => {
+    let maxNum = 0;
+    (list || []).forEach(s => {
+      if (s.employee_id) {
+        const match = String(s.employee_id).match(/^EMP-(\d+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      }
+    });
+    return `EMP-${String(maxNum + 1).padStart(3, '0')}`;
+  };
+
   const fetchSalesmen = async () => {
     try {
       setLoading(true);
       const res = await api.get('/salesmen');
-      setSalesmen(res.salesmen || []);
+      const list = res.salesmen || [];
+      setSalesmen(list);
+      if (res.next_employee_id) {
+        setNextEmployeeId(res.next_employee_id);
+      } else {
+        setNextEmployeeId(calculateNextEmployeeId(list));
+      }
     } catch (e) {
       showToast('Failed to load salesmen', 'error');
     } finally {
@@ -52,11 +73,12 @@ export function SalesmenPage() {
 
   const openCreateModal = () => {
     setEditingSalesman(null);
+    const assignedId = nextEmployeeId || calculateNextEmployeeId(salesmen);
     setFormData({
       full_name: '',
       mobile: '',
       email: '',
-      employee_id: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+      employee_id: assignedId,
       password: '',
       joining_date: new Date().toISOString().split('T')[0],
       address: '',
@@ -292,15 +314,19 @@ export function SalesmenPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Employee ID
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Employee ID
+                </label>
+                <span className="text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-full">
+                  Auto-increment
+                </span>
+              </div>
               <input
                 type="text"
-                placeholder="EMP-101"
+                readOnly
                 value={formData.employee_id}
-                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-sm font-mono font-bold cursor-not-allowed focus:outline-none"
               />
             </div>
           </div>
