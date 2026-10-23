@@ -1,9 +1,12 @@
 node_modules
+server/node_modules
+client/node_modules
 .env
 .env.local
 server/data/*.db-wal
 server/data/*.db-shm
 client/dist
+dist
 .DS_Store
 *.log
 .vercel

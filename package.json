@@ -7,7 +7,7 @@
     "start": "node server/src/index.js",
     "server": "node server/src/index.js",
     "client": "cd client && npm run dev",
-    "build": "cd client && npm install && npm run build",
+    "build": "npm --prefix client install && npm --prefix client run build",
     "seed": "node server/src/seed/seedData.js",
     "db:reset": "node server/src/seed/resetDb.js",
     "db:clean": "node server/src/seed/cleanTidb.js",
@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
