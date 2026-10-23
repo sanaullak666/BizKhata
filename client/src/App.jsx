@@ -54,7 +54,16 @@ export function App() {
       <Route path="/statement/:id/public" element={<PublicCustomerStatement />} />
       <Route path="/invoice/:id/public" element={<PublicInvoiceView />} />
       <Route path="/receipts/:id/public" element={<PublicReceiptView />} />
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate to={isOwner ? "/dashboard" : "/salesman/home"} replace />
+          ) : (
+            <Login />
+          )
+        }
+      />
 
       {/* Root Redirection */}
       <Route
@@ -70,8 +79,8 @@ export function App() {
         }
       />
 
-      {/* Owner Portal Routes */}
-      {isOwner ? (
+      {/* Owner Portal Routes (Authenticated Owner Only) */}
+      {user && isOwner && (
         <Route element={<OwnerLayout />}>
           <Route path="/dashboard" element={<OwnerDashboard />} />
           <Route path="/customers" element={<CustomersPage />} />
@@ -89,8 +98,10 @@ export function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
-      ) : (
-        /* Salesman Portal Routes */
+      )}
+
+      {/* Salesman Portal Routes (Authenticated Salesman / Non-owner Only) */}
+      {user && !isOwner && (
         <Route element={<SalesmanLayout />}>
           <Route path="/salesman/home" element={<SalesmanDashboard />} />
           <Route path="/salesman/customers" element={<MyCustomersPage />} />
@@ -102,6 +113,9 @@ export function App() {
           <Route path="*" element={<Navigate to="/salesman/home" replace />} />
         </Route>
       )}
+
+      {/* Catch-all Fallback: If not logged in, redirect any unauthorized path to /login */}
+      {!user && <Route path="*" element={<Navigate to="/login" replace />} />}
     </Routes>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { Navbar } from './Navbar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { FloatingActionButton } from './FloatingActionButton';
@@ -7,9 +8,14 @@ import { AddCustomerModal } from '../customer/AddCustomerModal';
 import { AddTransactionModal } from '../transaction/AddTransactionModal';
 
 export function SalesmanLayout() {
+  const { user } = useAuth();
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [txModalConfig, setTxModalConfig] = useState({ isOpen: false, defaultType: 'GAVE' });
   const navigate = useNavigate();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans pb-20 sm:pb-8">

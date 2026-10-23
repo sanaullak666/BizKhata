@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,6 +46,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('khataflow_token');
     setUser(null);
+    navigate('/login', { replace: true });
   };
 
   const hasPermission = (permName) => {
