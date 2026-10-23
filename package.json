@@ -8,6 +8,8 @@
     "server": "node server/src/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",
+    "seed": "node server/src/seed/seedData.js",
+    "db:reset": "node server/src/seed/resetDb.js",
     "test": "node server/test-suite.js"
   },
   "keywords": [

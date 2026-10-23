@@ -10,22 +10,16 @@ function authenticateToken(req, res, next) {
     token = authHeader.split(' ')[1];
   }
 
-  // Also support direct header for easy testing/demo switching if no token provided
-  const directUserId = req.headers['x-user-id'];
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required. Please log in.' });
+  }
 
   let userId = null;
-
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      userId = decoded.userId;
-    } catch (err) {
-      return res.status(401).json({ error: 'Invalid or expired authentication token.' });
-    }
-  } else if (directUserId) {
-    userId = directUserId;
-  } else {
-    return res.status(401).json({ error: 'Authentication required. Please log in.' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    userId = decoded.userId;
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
   }
 
   const user = db.prepare(`

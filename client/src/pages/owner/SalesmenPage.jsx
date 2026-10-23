@@ -57,7 +57,7 @@ export function SalesmenPage() {
       mobile: '',
       email: '',
       employee_id: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-      password: 'password123',
+      password: '',
       joining_date: new Date().toISOString().split('T')[0],
       address: '',
       designation: 'Field Sales Executive',

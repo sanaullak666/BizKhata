@@ -4,7 +4,7 @@ import { formatDate } from '../../lib/utils';
 import { User, ShieldCheck, Phone, Mail, MapPin, Calendar, LogOut, Check } from 'lucide-react';
 
 export function SalesmanProfilePage() {
-  const { user, demoUsers, switchUser, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -25,7 +25,7 @@ export function SalesmanProfilePage() {
           <div>
             <h2 className="text-lg font-black text-slate-900 dark:text-white">{user?.full_name}</h2>
             <p className="text-xs text-brand-600 dark:text-brand-400 font-semibold">{user?.designation}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Joined: {formatDate(user?.joining_date)}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Firm: {user?.business_name}</p>
           </div>
         </div>
 
@@ -55,7 +55,7 @@ export function SalesmanProfilePage() {
       {/* Granted Permissions Card */}
       <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-          Configured Staff Permissions
+          Configured Operational Permissions
         </h3>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -78,30 +78,6 @@ export function SalesmanProfilePage() {
                 {p.label}
               </span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Switch to Another Account */}
-      <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-          Switch Portal Role (Evaluation Preset)
-        </h3>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {demoUsers.map((du) => (
-            <button
-              key={du.id}
-              onClick={() => switchUser(du.id)}
-              className={`p-3 rounded-xl border text-left text-xs transition-all ${
-                du.id === user?.id
-                  ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/40 font-bold'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <p className="font-bold text-slate-900 dark:text-white">{du.full_name}</p>
-              <p className="text-[11px] text-slate-400 capitalize">{du.role} • {du.employee_id || 'Staff'}</p>
-            </button>
           ))}
         </div>
       </div>

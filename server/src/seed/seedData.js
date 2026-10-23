@@ -2,7 +2,11 @@ const bcrypt = require('bcryptjs');
 const { db } = require('../config/database');
 const { recalculateCustomerLedger } = require('../services/ledgerService');
 
-function seedDatabase() {
+function seedDatabase(force = false) {
+  if (!force && process.env.SEED_DEMO !== 'true') {
+    return;
+  }
+
   const existingBiz = db.prepare(`SELECT count(*) as count FROM businesses`).get();
   if (existingBiz.count > 0) {
     console.log('Database already has data. Skipping initial seed.');
@@ -731,6 +735,12 @@ function seedDatabase() {
   }
 
   console.log('✅ Initial seed data created and all ledger balances accurately calculated!');
+}
+
+if (require.main === module) {
+  const { initializeDatabase } = require('../config/database');
+  initializeDatabase();
+  seedDatabase(true);
 }
 
 module.exports = { seedDatabase };
