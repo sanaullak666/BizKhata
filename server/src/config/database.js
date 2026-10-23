@@ -2,16 +2,55 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const dataDir = path.join(__dirname, '../../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+const isVercel = !!process.env.VERCEL;
+
+let dbPath;
+if (isVercel) {
+  const tmpDir = '/tmp';
+  dbPath = path.join(tmpDir, 'khataflow.db');
+
+  // Copy bundled database to /tmp on cold start if not present
+  if (!fs.existsSync(dbPath)) {
+    const candidatePaths = [
+      path.join(__dirname, '../../data/khataflow.db'),
+      path.join(__dirname, '../data/khataflow.db'),
+      path.join(process.cwd(), 'server/data/khataflow.db'),
+      path.join(process.cwd(), 'data/khataflow.db'),
+    ];
+    for (const candidate of candidatePaths) {
+      if (fs.existsSync(candidate)) {
+        try {
+          fs.copyFileSync(candidate, dbPath);
+          console.log(`Copied bundled db from ${candidate} to ${dbPath}`);
+          break;
+        } catch (e) {
+          console.warn('Failed to copy bundled db to /tmp:', e.message);
+        }
+      }
+    }
+  }
+} else {
+  const dataDir = path.join(__dirname, '../../data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  dbPath = path.join(dataDir, 'khataflow.db');
 }
 
-const dbPath = path.join(dataDir, 'khataflow.db');
 const db = new Database(dbPath);
 
-// Enable WAL mode and Foreign Keys for integrity and speed
-db.pragma('journal_mode = WAL');
+// Enable journal mode and Foreign Keys
+try {
+  if (isVercel) {
+    db.pragma('journal_mode = DELETE');
+  } else {
+    db.pragma('journal_mode = WAL');
+  }
+} catch (e) {
+  try {
+    db.pragma('journal_mode = DELETE');
+  } catch (err) {}
+}
 db.pragma('foreign_keys = ON');
 
 function initializeDatabase() {
