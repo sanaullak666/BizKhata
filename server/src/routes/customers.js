@@ -47,11 +47,8 @@ router.get('/', authenticateToken, async (req, res) => {
     `;
     const params = [req.businessId];
 
-    // Salesman visibility restriction: salesman can only see assigned customers! (Requirement 7)
-    if (req.user.role === 'salesman' && (!req.user.permissions || !req.user.permissions.can_view_other_salesmen)) {
-      query += ` AND ca.salesman_id = ?`;
-      params.push(req.user.id);
-    } else if (salesman_id) {
+    // In Grihalakshmi Food Products single-business model, all customers are visible to salesmen.
+    if (salesman_id) {
       if (salesman_id === 'unassigned') {
         query += ` AND ca.salesman_id IS NULL`;
       } else {

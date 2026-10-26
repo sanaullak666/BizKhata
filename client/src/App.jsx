@@ -41,8 +41,13 @@ export function App() {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <div className="h-10 w-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading KhataFlow Ledger...</p>
+          <img 
+            src="/logo.png" 
+            alt="Grihalakshmi Food Products Logo" 
+            className="w-14 h-14 rounded-2xl object-contain mx-auto shadow-md p-1 bg-white border border-slate-200"
+          />
+          <div className="h-6 w-6 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Grihalakshmi Food Products...</p>
         </div>
       </div>
     );
@@ -83,19 +88,19 @@ export function App() {
       {user && isOwner && (
         <Route element={<OwnerLayout />}>
           <Route path="/dashboard" element={<OwnerDashboard />} />
-          <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-          <Route path="/salesmen" element={<SalesmenPage />} />
-          <Route path="/salesmen/:id" element={<SalesmanDetailPage />} />
-          <Route path="/transactions" element={<TransactionsPage />} />
-          <Route path="/collections" element={<CollectionsPage />} />
-          <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/invoices/new" element={<InvoiceBuilder />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/reminders" element={<RemindersPage />} />
-          <Route path="/permissions" element={<PermissionsPage />} />
-          <Route path="/audit-logs" element={<AuditLogsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/customers" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/customers/:id" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/salesmen" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/salesmen/:id" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/transactions" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/collections" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/invoices" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/invoices/new" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/reminders" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/permissions" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/audit-logs" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/settings" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       )}
@@ -104,12 +109,12 @@ export function App() {
       {user && !isOwner && (
         <Route element={<SalesmanLayout />}>
           <Route path="/salesman/home" element={<SalesmanDashboard />} />
-          <Route path="/salesman/customers" element={<MyCustomersPage />} />
-          <Route path="/salesman/sales" element={<TransactionsPage />} />
-          <Route path="/salesman/collections" element={<MyCollectionsPage />} />
-          <Route path="/salesman/invoices/new" element={<InvoiceBuilder backPath="/salesman/home" />} />
-          <Route path="/salesman/profile" element={<SalesmanProfilePage />} />
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
+          <Route path="/salesman/customers" element={<Navigate to="/salesman/home" replace />} />
+          <Route path="/salesman/sales" element={<Navigate to="/salesman/home" replace />} />
+          <Route path="/salesman/collections" element={<Navigate to="/salesman/home" replace />} />
+          <Route path="/salesman/invoices/new" element={<Navigate to="/salesman/home" replace />} />
+          <Route path="/salesman/profile" element={<Navigate to="/salesman/home" replace />} />
+          <Route path="/customers/:id" element={<Navigate to="/salesman/home" replace />} />
           <Route path="*" element={<Navigate to="/salesman/home" replace />} />
         </Route>
       )}

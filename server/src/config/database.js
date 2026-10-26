@@ -350,6 +350,53 @@ async function initializeDatabase() {
       user_agent TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS suppliers (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      mobile VARCHAR(50),
+      email VARCHAR(255),
+      address TEXT,
+      city VARCHAR(100),
+      opening_balance DOUBLE DEFAULT 0,
+      opening_balance_type VARCHAR(32) DEFAULT 'owe_supplier',
+      current_balance DOUBLE DEFAULT 0,
+      status VARCHAR(32) DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS supplier_transactions (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      supplier_id VARCHAR(64) NOT NULL,
+      type VARCHAR(32) NOT NULL,
+      amount DOUBLE NOT NULL,
+      date DATE NOT NULL,
+      time VARCHAR(20) NOT NULL,
+      description TEXT,
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      running_balance DOUBLE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS cashbook_entries (
+      id VARCHAR(64) PRIMARY KEY,
+      business_id VARCHAR(64) NOT NULL,
+      type VARCHAR(32) NOT NULL,
+      amount DOUBLE NOT NULL,
+      date DATE NOT NULL,
+      time VARCHAR(20) NOT NULL,
+      category VARCHAR(100),
+      description TEXT,
+      payment_mode VARCHAR(50) DEFAULT 'Cash',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
     )`
   ];
 

@@ -45,12 +45,16 @@ const reportsRoutes = require('./routes/reports');
 const auditLogsRoutes = require('./routes/auditLogs');
 const notificationsRoutes = require('./routes/notifications');
 const backupRoutes = require('./routes/backup');
+const suppliersRoutes = require('./routes/suppliers');
+const cashbookRoutes = require('./routes/cashbook');
 
 // Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/salesmen', salesmenRoutes);
 app.use('/api/customers', customersRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/cashbook', cashbookRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/collections', collectionsRoutes);
 app.use('/api/invoices', invoicesRoutes);
@@ -63,7 +67,7 @@ app.use('/api/backup', backupRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'KhataFlow Backend API', time: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'Grihalakshmi Food Products Backend API', time: new Date().toISOString() });
 });
 
 // Serve frontend static files if client/dist exists
@@ -92,7 +96,7 @@ app.use((err, req, res, next) => {
 
 if (!process.env.VERCEL && require.main === module) {
   app.listen(PORT, () => {
-    console.log(`🚀 KhataFlow Server listening on http://localhost:${PORT}`);
+    console.log(`🚀 Grihalakshmi Food Products Server listening on http://localhost:${PORT}`);
   });
 }
 

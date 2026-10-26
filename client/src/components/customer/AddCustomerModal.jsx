@@ -223,26 +223,6 @@ export function AddCustomerModal({ isOpen, onClose, onSuccess }) {
           </div>
         </div>
 
-        {/* Assigned Salesman (if Owner) */}
-        {isOwner && (
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Assign to Salesman (Territory)
-            </label>
-            <select
-              value={formData.assigned_salesman_id}
-              onChange={(e) => setFormData({ ...formData, assigned_salesman_id: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-            >
-              <option value="">-- Unassigned (Assign Later) --</option>
-              {salesmen.map((sm) => (
-                <option key={sm.id} value={sm.id}>
-                  {sm.full_name} ({sm.employee_id || 'Staff'})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Buttons */}
         <div className="pt-3 flex justify-end gap-3">

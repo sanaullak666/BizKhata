@@ -28,8 +28,8 @@ function seedDatabase(force = false) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       bizId,
-      'Apex Enterprise & Wholesale Supplies',
-      'Quality Industrial & Commercial Goods Distributor',
+      'Grihalakshmi Food Products',
+      'Food Products Wholesale & Distribution Digital Ledger',
       'Plot 45, MIDC Industrial Area, Phase II',
       'Mumbai',
       'Maharashtra',

@@ -442,4 +442,45 @@ router.put('/:id/permissions', authenticateToken, requireRole('owner'), async (r
   }
 });
 
+// Delete salesman (Owner only)
+router.delete('/:id', authenticateToken, requireRole('owner'), async (req, res) => {
+  try {
+    const smId = req.params.id;
+    const salesman = await db.prepare(`
+      SELECT * FROM users WHERE id = ? AND business_id = ? AND role = 'salesman'
+    `).get(smId, req.businessId);
+
+    if (!salesman) {
+      return res.status(404).json({ error: 'Salesman not found.' });
+    }
+
+    const deleteTx = db.transaction(async () => {
+      await db.prepare(`DELETE FROM customer_assignments WHERE salesman_id = ?`).run(smId);
+      await db.prepare(`DELETE FROM staff_permissions WHERE user_id = ?`).run(smId);
+      await db.prepare(`DELETE FROM collections WHERE salesman_id = ?`).run(smId);
+      await db.prepare(`DELETE FROM reminders WHERE salesman_id = ?`).run(smId);
+      await db.prepare(`DELETE FROM notifications WHERE user_id = ?`).run(smId);
+      await db.prepare(`DELETE FROM users WHERE id = ? AND business_id = ?`).run(smId, req.businessId);
+    });
+
+    await deleteTx();
+
+    await logAudit({
+      businessId: req.businessId,
+      userId: req.user.id,
+      userName: req.user.full_name,
+      action: 'Salesman Deleted',
+      entityType: 'User',
+      entityId: smId,
+      details: `Deleted salesman ${salesman.full_name} (${salesman.mobile}).`,
+      req,
+    });
+
+    res.json({ message: 'Salesman deleted successfully.' });
+  } catch (err) {
+    console.error('Delete salesman error:', err);
+    res.status(500).json({ error: err.message || 'Error deleting salesman.' });
+  }
+});
+
 module.exports = router;

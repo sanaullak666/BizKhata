@@ -36,39 +36,12 @@ async function verifyCustomerAccess(req, res, next) {
   }
 
   try {
-    // Owner can access all customers in their business
-    if (req.user.role === 'owner') {
+    // Both Owner and Salesman can access any customer belonging to their business
+    if (req.user.role === 'owner' || req.user.role === 'salesman') {
       const cust = await db.prepare(`SELECT business_id FROM customers WHERE id = ?`).get(customerId);
       if (!cust || cust.business_id !== req.businessId) {
         return res.status(404).json({ error: 'Customer not found.' });
       }
-      return next();
-    }
-
-    // Salesman check
-    if (req.user.role === 'salesman') {
-      // If salesman has permission to view other salesmen's customers
-      if (req.user.permissions && req.user.permissions.can_view_other_salesmen === 1) {
-        const cust = await db.prepare(`SELECT business_id FROM customers WHERE id = ?`).get(customerId);
-        if (!cust || cust.business_id !== req.businessId) {
-          return res.status(404).json({ error: 'Customer not found.' });
-        }
-        return next();
-      }
-
-      // Verify active assignment
-      const assignment = await db.prepare(`
-        SELECT id FROM customer_assignments 
-        WHERE customer_id = ? AND salesman_id = ? AND status = 'active'
-      `).get(customerId, req.user.id);
-
-      if (!assignment) {
-        return res.status(403).json({
-          error: 'Access denied: This customer is not assigned to you. Contact the business owner for assignment.',
-          assigned: false,
-        });
-      }
-
       return next();
     }
 

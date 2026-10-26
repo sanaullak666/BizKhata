@@ -260,7 +260,7 @@ router.post('/', authenticateToken, verifyCustomerAccess, checkPermission('can_a
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const txId = req.params.id;
-    const { amount, date, time, description, payment_method, reference_number, notes } = req.body;
+    const { amount, date, time, description, payment_method, reference_number, attachment_url, notes } = req.body;
 
     const existing = await db.prepare(`SELECT * FROM transactions WHERE id = ? AND business_id = ?`).get(txId, req.businessId);
     if (!existing) {
@@ -282,6 +282,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         description = COALESCE(?, description),
         payment_method = COALESCE(?, payment_method),
         reference_number = COALESCE(?, reference_number),
+        attachment_url = COALESCE(?, attachment_url),
         notes = COALESCE(?, notes),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND business_id = ?
@@ -292,6 +293,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       description,
       payment_method,
       reference_number,
+      attachment_url !== undefined ? attachment_url : null,
       notes,
       txId,
       req.businessId

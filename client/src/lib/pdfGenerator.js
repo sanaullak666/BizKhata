@@ -19,7 +19,7 @@ export function generateReceiptPDF(receipt, business) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(business?.name || 'KhataFlow Business', 12, 12);
+  doc.text(business?.name || 'Grihalakshmi Food Products', 12, 12);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -84,14 +84,21 @@ export function generateReceiptPDF(receipt, business) {
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
   doc.text('This is a computer-generated digital receipt and requires no physical signature.', 12, 132);
-  doc.text(`Powered by KhataFlow — Intelligent Business Ledger`, 12, 137);
+  doc.text(`Powered by Grihalakshmi Food Products — Intelligent Business Ledger`, 12, 137);
 
   doc.save(`Receipt-${receipt.receipt_number}.pdf`);
 }
 
-// Generate customer ledger statement PDF
+// Generate customer / supplier ledger statement PDF
 export function generateStatementPDF(statementData, business) {
-  const { customer, period, openingBalance, totalGave, totalReceived, closingBalance, transactions } = statementData;
+  const party = statementData.customer || statementData.party || statementData.supplier || {};
+  const period = statementData.period || { fromDate: new Date().toISOString().slice(0, 10), toDate: new Date().toISOString().slice(0, 10) };
+  const openingBalance = statementData.openingBalance || 0;
+  const totalGave = statementData.totalGave || 0;
+  const totalReceived = statementData.totalReceived || 0;
+  const closingBalance = statementData.closingBalance !== undefined ? statementData.closingBalance : (party.current_balance || 0);
+  const transactions = statementData.transactions || [];
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -99,6 +106,7 @@ export function generateStatementPDF(statementData, business) {
   });
 
   const currency = business?.currency_symbol || 'Rs.';
+  const isSupplier = statementData.partyType === 'supplier' || party.type === 'supplier';
 
   // Header
   doc.setFillColor(15, 23, 42); // Slate-900
@@ -107,7 +115,7 @@ export function generateStatementPDF(statementData, business) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(business?.name || 'KhataFlow Business', 14, 14);
+  doc.text(business?.name || 'Grihalakshmi Food Products', 14, 14);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -118,14 +126,16 @@ export function generateStatementPDF(statementData, business) {
   doc.setTextColor(30, 41, 59);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('CUSTOMER LEDGER STATEMENT', 14, 42);
+  doc.text(isSupplier ? 'SUPPLIER LEDGER STATEMENT' : 'CUSTOMER LEDGER STATEMENT', 14, 42);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text(`Statement Period: ${formatDate(period.fromDate)} to ${formatDate(period.toDate)}`, 14, 48);
+  const fromText = period.fromDate ? formatDate(period.fromDate) : 'Start';
+  const toText = period.toDate ? formatDate(period.toDate) : formatDate(new Date());
+  doc.text(`Statement Period: ${fromText} to ${toText}`, 14, 48);
 
-  // Customer Card
+  // Party Card
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(14, 52, 182, 22, 2, 2, 'FD');
@@ -133,18 +143,18 @@ export function generateStatementPDF(statementData, business) {
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`${customer.name} ${customer.business_name ? `(${customer.business_name})` : ''}`, 18, 60);
+  doc.text(`${party.name || 'Account'} ${party.business_name ? `(${party.business_name})` : ''}`, 18, 60);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Mobile: ${customer.mobile || '-'} | City: ${customer.city || '-'} | GSTIN: ${customer.gstin || '-'}`, 18, 67);
+  doc.text(`Mobile: ${party.mobile || '-'} | City: ${party.city || '-'} | GSTIN: ${party.gstin || '-'}`, 18, 67);
 
   // Summary Metrics Table
   autoTable(doc, {
     startY: 78,
     theme: 'grid',
-    head: [['Opening Balance', 'Total Sales (Given)', 'Total Payments (Received)', 'Net Closing Balance']],
+    head: [['Opening Balance', isSupplier ? 'Purchases (Cr)' : 'Total Sales (Given/Dr)', isSupplier ? 'Payments (Dr)' : 'Total Received (Cr)', 'Net Closing Balance']],
     body: [[
       `${currency} ${Number(openingBalance).toLocaleString('en-IN')}`,
       `${currency} ${Number(totalGave).toLocaleString('en-IN')}`,
@@ -158,7 +168,7 @@ export function generateStatementPDF(statementData, business) {
   // Transactions Table
   const tableRows = transactions.map((t) => [
     formatDate(t.date),
-    t.description || (t.type === 'GAVE' ? 'Goods supplied' : 'Payment received'),
+    t.description || (t.type === 'GAVE' ? (isSupplier ? 'Payment Made' : 'Goods Supplied') : (isSupplier ? 'Goods Received' : 'Payment Received')),
     t.type === 'GAVE' ? `${currency} ${Number(t.amount).toLocaleString('en-IN')}` : '-',
     t.type === 'RECEIVED' ? `${currency} ${Number(t.amount).toLocaleString('en-IN')}` : '-',
     `${currency} ${Number(t.running_balance).toLocaleString('en-IN')}`,
@@ -167,14 +177,14 @@ export function generateStatementPDF(statementData, business) {
 
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 8,
-    head: [['Date', 'Description', 'You Gave (Dr)', 'You Received (Cr)', 'Balance', 'Method']],
+    head: [['Date', 'Description / Ref', isSupplier ? 'You Paid (Dr)' : 'You Gave (Dr)', isSupplier ? 'Received Goods (Cr)' : 'You Received (Cr)', 'Balance', 'Method']],
     body: tableRows,
     theme: 'striped',
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 8.5 },
     columnStyles: {
-      2: { textColor: [225, 29, 72], fontStyle: 'bold' }, // Gave (Rose)
-      3: { textColor: [16, 185, 129], fontStyle: 'bold' }, // Received (Emerald)
+      2: { textColor: [225, 29, 72], fontStyle: 'bold' },
+      3: { textColor: [16, 185, 129], fontStyle: 'bold' },
       4: { fontStyle: 'bold' },
     },
   });
@@ -183,9 +193,9 @@ export function generateStatementPDF(statementData, business) {
   const finalY = doc.lastAutoTable.finalY + 12;
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text('This statement reflects transactions recorded in the business digital ledger.', 14, Math.min(finalY, 280));
+  doc.text('This statement reflects transactions recorded in the Grihalakshmi Food Products digital ledger.', 14, Math.min(finalY, 280));
 
-  doc.save(`Statement-${customer.name.replace(/\s+/g, '_')}-${formatDate(new Date())}.pdf`);
+  doc.save(`Statement-${(party.name || 'Account').replace(/\s+/g, '_')}-${formatDate(new Date())}.pdf`);
 }
 
 // Generate Tax Invoice PDF
@@ -205,7 +215,7 @@ export function generateInvoicePDF(invoice, items, business) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(business?.name || 'KhataFlow Business', 14, 14);
+  doc.text(business?.name || 'Grihalakshmi Food Products', 14, 14);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -288,4 +298,156 @@ export function generateInvoicePDF(invoice, items, business) {
   doc.text(`IFSC: ${business?.bank_ifsc || ''}`, 14, finalY + 26);
 
   doc.save(`Invoice-${invoice.invoice_number}.pdf`);
+}
+
+// Generate Business Summary / Reports PDF
+export function generateBusinessReportPDF(reportData, business) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+  const currency = business?.currency_symbol || 'Rs.';
+
+  // Header banner
+  doc.setFillColor(27, 94, 32); // #1b5e20 Forest Green
+  doc.rect(0, 0, 210, 30, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(business?.name || 'Grihalakshmi Food Products', 14, 13);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(business?.tagline || 'Spices, Pure Curry Powders & Millets Ledger', 14, 19);
+  doc.text(`Phone: ${business?.phone || '-'} | GSTIN: ${business?.gstin || '-'} | Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 25);
+
+  // Title
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(reportData.title || 'BUSINESS ANALYTICS & RECOVERY REPORT', 14, 40);
+
+  // Key Metrics Grid
+  autoTable(doc, {
+    startY: 46,
+    theme: 'grid',
+    head: [['Total Receivable (Len)', 'Total Payable (Den)', 'Net Working Balance', 'Active Accounts']],
+    body: [[
+      `${currency} ${Number(reportData.totalReceivable || 0).toLocaleString('en-IN')}`,
+      `${currency} ${Number(reportData.totalPayable || 0).toLocaleString('en-IN')}`,
+      `${currency} ${Number((reportData.totalReceivable || 0) - (reportData.totalPayable || 0)).toLocaleString('en-IN')}`,
+      `${reportData.totalAccounts || 0}`
+    ]],
+    headStyles: { fillColor: [27, 94, 32], textColor: 255, halign: 'center', fontStyle: 'bold' },
+    bodyStyles: { halign: 'center', fontStyle: 'bold', fontSize: 10 },
+  });
+
+  // Table of Balances or Accounts
+  if (reportData.items && reportData.items.length > 0) {
+    const tableRows = reportData.items.map((it, idx) => [
+      idx + 1,
+      it.name || '-',
+      it.mobile || '-',
+      it.city || it.address || '-',
+      it.status || (it.current_balance > 0 ? 'You Will Get' : it.current_balance < 0 ? 'You Will Give' : 'Settled'),
+      `${currency} ${Math.abs(Number(it.current_balance || 0)).toLocaleString('en-IN')}`
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [['#', 'Account Name', 'Mobile', 'Location', 'Status', 'Balance']],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8.5 },
+    });
+  }
+
+  // Footer
+  const finalY = doc.lastAutoTable.finalY + 12;
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Confidential internal report — Grihalakshmi Food Products Enterprise.', 14, Math.min(finalY, 280));
+
+  doc.save(`${(reportData.filename || 'Business-Report').replace(/\s+/g, '_')}-${formatDate(new Date())}.pdf`);
+}
+
+// Generate Field Staff Daily Handover Settlement PDF
+export function generateDailyHandoverPDF(handoverData, business) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a5',
+  });
+  const currency = business?.currency_symbol || 'Rs.';
+
+  doc.setFillColor(27, 94, 32);
+  doc.rect(0, 0, 148, 25, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(business?.name || 'Grihalakshmi Food Products', 12, 11);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Field Sales Staff — Daily Collection & Cash Handover Settlement', 12, 17);
+  doc.text(`Settlement Date: ${formatDate(new Date())}`, 12, 22);
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DAILY HANDOVER SLIP', 12, 34);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Salesman / Collector: ${handoverData.salesmanName || 'Field Executive'}`, 12, 41);
+  doc.text(`Total Collections Recorded: ${handoverData.collectionsCount || 0}`, 12, 47);
+
+  autoTable(doc, {
+    startY: 53,
+    theme: 'grid',
+    head: [['Payment Channel', 'Amount Collected']],
+    body: [
+      ['Physical Cash in Hand', `${currency} ${Number(handoverData.cashAmount || 0).toLocaleString('en-IN')}`],
+      ['Digital / UPI Online', `${currency} ${Number(handoverData.upiAmount || 0).toLocaleString('en-IN')}`],
+      ['Total Recovered Today', `${currency} ${Number(handoverData.totalAmount || 0).toLocaleString('en-IN')}`]
+    ],
+    headStyles: { fillColor: [27, 94, 32], textColor: 255 },
+    bodyStyles: { fontStyle: 'bold' }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 16;
+  doc.setFontSize(8);
+  doc.text('Salesman Signature: __________________', 12, Math.min(finalY, 195));
+  doc.text('Admin Signature: __________________', 80, Math.min(finalY, 195));
+
+  doc.save(`Handover-${(handoverData.salesmanName || 'Staff').replace(/\s+/g, '_')}-${formatDate(new Date())}.pdf`);
+}
+
+// Export statement transactions directly to CSV
+export function exportStatementToCSV(statementData) {
+  const party = statementData.customer || statementData.party || statementData.supplier || {};
+  const transactions = statementData.transactions || [];
+  const headers = ['Date', 'Description', 'You Gave / Dr', 'You Received / Cr', 'Running Balance', 'Payment Method', 'Reference'];
+  const rows = transactions.map(t => [
+    `"${formatDate(t.date)}"`,
+    `"${(t.description || '').replace(/"/g, '""')}"`,
+    t.type === 'GAVE' ? t.amount : '',
+    t.type === 'RECEIVED' ? t.amount : '',
+    t.running_balance,
+    `"${t.payment_method || ''}"`,
+    `"${t.reference_number || ''}"`
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Statement-${(party.name || 'Account').replace(/\s+/g, '_')}-${formatDate(new Date())}.csv`;
+  a.click();
 }

@@ -32,12 +32,14 @@ export function Navbar({ onToggleSidebar }) {
           )}
 
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-glow-brand text-white">
-              <Sparkles className="w-5 h-5" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Grihalakshmi Logo" 
+              className="h-9 w-9 rounded-xl object-contain bg-white shadow-sm p-0.5 border border-slate-200 dark:border-slate-700"
+            />
             <div>
-              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                Khata<span className="text-brand-600 dark:text-brand-400">Flow</span>
+              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                Grihalakshmi <span className="text-brand-600 dark:text-brand-400">Food Products</span>
               </span>
               <span className="hidden sm:inline-block text-[10px] font-semibold uppercase tracking-wider text-slate-400 ml-1">
                 {isOwner ? 'Executive HQ' : 'Salesfield'}

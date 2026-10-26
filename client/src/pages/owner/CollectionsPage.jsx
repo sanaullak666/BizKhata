@@ -72,7 +72,7 @@ export function CollectionsPage() {
   const handleExportCSV = async () => {
     try {
       const blob = await api.get('/backup/export-csv/collections');
-      downloadBlob(blob, `KhataFlow-Collections-${new Date().toISOString().slice(0, 10)}.csv`);
+      downloadBlob(blob, `Grihalakshmi-Collections-${new Date().toISOString().slice(0, 10)}.csv`);
       showToast('Collections exported to CSV!', 'success');
     } catch (e) {
       showToast('Failed to export CSV', 'error');

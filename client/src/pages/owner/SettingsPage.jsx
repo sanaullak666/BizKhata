@@ -62,7 +62,7 @@ export function SettingsPage() {
     setExporting(true);
     try {
       const blob = await api.get('/backup/export-json');
-      downloadBlob(blob, `KhataFlow-FullBackup-${new Date().toISOString().slice(0, 10)}.json`);
+      downloadBlob(blob, `Grihalakshmi-FullBackup-${new Date().toISOString().slice(0, 10)}.json`);
       showToast('Full database JSON backup downloaded!', 'success');
     } catch (e) {
       showToast('Failed to export database backup', 'error');

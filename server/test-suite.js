@@ -147,24 +147,25 @@ async function runTestSuite() {
   });
   const cust2Id = cust2Res.data.customer.id;
 
-  // 8. Salesman Territory Customer Isolation
+  // 8. Salesman Customer Visibility (All customers viewable by salesman)
   const salesmanCusts = await req('/customers', {
     headers: { Authorization: `Bearer ${salesmanToken}` },
   });
-  test('Salesman only sees assigned customers (Territory Isolation)', () => {
+  test('Salesman can view all customers across business directory', () => {
     assert.strictEqual(salesmanCusts.status, 200);
-    const hasAssigned = salesmanCusts.data.customers.some(c => c.id === cust1Id);
-    const hasUnassigned = salesmanCusts.data.customers.some(c => c.id === cust2Id);
-    assert(hasAssigned, 'Salesman sees assigned customer');
-    assert(!hasUnassigned, 'Salesman CANNOT see unassigned customer');
+    const hasCust1 = salesmanCusts.data.customers.some(c => c.id === cust1Id);
+    const hasCust2 = salesmanCusts.data.customers.some(c => c.id === cust2Id);
+    assert(hasCust1, 'Salesman sees customer 1');
+    assert(hasCust2, 'Salesman sees customer 2');
   });
 
-  // 9. Unauthorized Cross-Territory Access Check (403 Forbidden)
-  const unauthAccess = await req(`/customers/${cust2Id}`, {
+  // 9. Salesman can view customer details without assignment requirement
+  const cust2Access = await req(`/customers/${cust2Id}`, {
     headers: { Authorization: `Bearer ${salesmanToken}` },
   });
-  test('Salesman accessing unassigned customer returns 403 Forbidden', () => {
-    assert.strictEqual(unauthAccess.status, 403);
+  test('Salesman can view customer details for any business customer', () => {
+    assert.strictEqual(cust2Access.status, 200);
+    assert.strictEqual(cust2Access.data.customer.id, cust2Id);
   });
 
   // 10. Financial Accuracy & Ledger Balance Recalculation

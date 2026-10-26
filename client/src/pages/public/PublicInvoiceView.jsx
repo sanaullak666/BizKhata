@@ -82,10 +82,17 @@ export function PublicInvoiceView() {
         {/* Invoice Paper */}
         <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row justify-between border-b border-slate-100 pb-4 gap-4">
-            <div>
-              <h2 className="text-xl font-extrabold text-slate-900">{business.name}</h2>
-              <p className="text-xs text-slate-500">{business.address}</p>
-              <p className="text-xs text-slate-400">GSTIN: {business.gstin || '-'}</p>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo.png" 
+                alt="Grihalakshmi Logo" 
+                className="h-12 w-12 rounded-xl object-contain bg-white shadow-sm p-0.5 border border-slate-200"
+              />
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900">{business.name}</h2>
+                <p className="text-xs text-slate-500">{business.address}</p>
+                <p className="text-xs text-slate-400">GSTIN: {business.gstin || '-'}</p>
+              </div>
             </div>
             <div className="text-left sm:text-right">
               <span className="text-[10px] font-bold uppercase text-slate-400">Tax Invoice</span>

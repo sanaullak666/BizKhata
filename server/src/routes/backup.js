@@ -54,7 +54,7 @@ router.get('/export-json', authenticateToken, requireRole('owner'), async (req, 
     });
 
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename=khataflow-backup-${new Date().toISOString().slice(0, 10)}.json`);
+    res.setHeader('Content-Disposition', `attachment; filename=grihalakshmi-backup-${new Date().toISOString().slice(0, 10)}.json`);
     res.send(JSON.stringify(backupData, null, 2));
   } catch (err) {
     console.error('Export JSON error:', err);
@@ -68,7 +68,7 @@ router.get('/export-csv/:type', authenticateToken, async (req, res) => {
     const { type } = req.params;
     const bizId = req.businessId;
 
-    let filename = `khataflow-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+    let filename = `grihalakshmi-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
     let csvContent = '';
 
     if (type === 'customers') {

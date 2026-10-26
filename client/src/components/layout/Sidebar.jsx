@@ -42,11 +42,13 @@ export function Sidebar({ isOpen, onClose }) {
         {/* Top Header */}
         <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200/80 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <span className="text-base font-extrabold text-slate-900 dark:text-white">
-              Khata<span className="text-brand-600">Flow</span>
+            <img 
+              src="/logo.png" 
+              alt="Grihalakshmi Logo" 
+              className="h-8 w-8 rounded-xl object-contain bg-white shadow-sm p-0.5 border border-slate-200 dark:border-slate-700"
+            />
+            <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+              Grihalakshmi <span className="text-brand-600">Food Products</span>
             </span>
           </div>
 

@@ -1,34 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { Sparkles, ArrowRight, Lock, Phone, Building2, User, Mail, MapPin } from 'lucide-react';
+import { ArrowRight, Lock, Phone, Eye, EyeOff, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function Login() {
-  const { login, registerBusiness } = useAuth();
+  const { login } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState('login'); // 'login' or 'register'
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Login form state
   const [loginData, setLoginData] = useState({
     identifier: '',
     password: '',
-  });
-
-  // Register form state
-  const [registerData, setRegisterData] = useState({
-    business_name: '',
-    owner_name: '',
-    mobile: '',
-    email: '',
-    password: '',
-    city: '',
-    address: '',
-    gstin: '',
-    upi_id: '',
   });
 
   const handleLogin = async (e) => {
@@ -54,254 +40,198 @@ export function Login() {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    if (!registerData.business_name || !registerData.owner_name || !registerData.mobile || !registerData.password) {
-      showToast('Please fill in all required fields.', 'warning');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const newOwner = await registerBusiness(registerData);
-      showToast(`Business "${registerData.business_name}" registered successfully!`, 'success');
-      navigate('/dashboard');
-    } catch (e) {
-      showToast(e.message || 'Registration failed. Please try again.', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex h-14 w-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 items-center justify-center text-white shadow-glow-brand mb-3">
-          <Sparkles className="w-8 h-8" />
-        </div>
-        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-          Khata<span className="text-brand-600 dark:text-brand-400">Flow</span>
-        </h2>
-        <p className="mt-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">
-          Digital Khata & Field Sales Management Platform
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
-        <div className="bg-white dark:bg-slate-900 py-8 px-6 sm:px-10 shadow-premium rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
-          {/* Toggle Login vs Register */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setMode('login')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'login'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Sign In (Owner & Staff)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('register')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'register'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Register New Business
-            </button>
-          </div>
-
-          {/* SIGN IN FORM */}
-          {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+    <div className="min-h-screen bg-slate-50 text-slate-800 antialiased flex flex-col font-sans selection:bg-emerald-600 selection:text-white">
+      
+      {/* 1. TOP HEADER (Matching Admin Khatabook Dashboard Theme) */}
+      <header className="bg-[#1b5e20] text-white shadow-md sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            
+            {/* Brand Logo & Name */}
+            <div className="flex items-center space-x-3">
+              <img
+                src="/logo.png"
+                alt="Grihalakshmi Food Products Logo"
+                className="w-10 h-10 rounded-lg object-contain bg-white p-0.5 border border-white/30 shadow-sm"
+              />
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Mobile Number or Email
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter registered mobile or email"
-                    value={loginData.identifier}
-                    onChange={(e) => setLoginData({ ...loginData, identifier: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter your password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-glow-brand transition-all disabled:opacity-50"
-              >
-                <span>{submitting ? 'Signing In...' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <div className="text-center pt-2">
-                <p className="text-xs text-slate-500">
-                  Salesman or field staff? Use the credentials created by your business owner.
+                <h1 className="text-base font-semibold text-white tracking-tight leading-none">
+                  Grihalakshmi Food Products
+                </h1>
+                <p className="text-xs text-emerald-200 mt-0.5">
+                  Official Ledger &amp; Field Staff Portal
                 </p>
               </div>
-            </form>
-          ) : (
-            /* REGISTER BUSINESS FORM */
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Business / Company Name *
-                </label>
-                <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Apex Hardware & Electricals"
-                    value={registerData.business_name}
-                    onChange={(e) => setRegisterData({ ...registerData, business_name: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
+            </div>
+
+            {/* Right Live Security Indicator */}
+            <div className="flex items-center space-x-2">
+              <div className="hidden sm:flex items-center space-x-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live Sync Active</span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Owner Full Name *
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Your name"
-                      value={registerData.owner_name}
-                      onChange={(e) => setRegisterData({ ...registerData, owner_name: e.target.value })}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Mobile Number *
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                    <input
-                      type="tel"
-                      required
-                      placeholder="10-digit mobile"
-                      value={registerData.mobile}
-                      onChange={(e) => setRegisterData({ ...registerData, mobile: e.target.value })}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center space-x-1 text-emerald-200 text-xs font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span className="hidden md:inline">256-Bit SSL Encrypted</span>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                    <input
-                      type="email"
-                      placeholder="business@email.com"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                    <input
-                      type="password"
-                      required
-                      placeholder="Create secure password"
-                      value={registerData.password}
-                      onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    City / State
-                  </label>
-                  <div className="relative">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                    <input
-                      type="text"
-                      placeholder="e.g. Mumbai"
-                      value={registerData.city}
-                      onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    UPI ID (For Reminders)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. business@upi"
-                    value={registerData.upi_id}
-                    onChange={(e) => setRegisterData({ ...registerData, upi_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-glow-brand transition-all disabled:opacity-50"
-              >
-                <span>{submitting ? 'Registering Company...' : 'Create Business & Open Ledger'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
+          </div>
         </div>
-      </div>
+      </header>
+
+      {/* 2. MAIN CENTERED LOGIN CONTAINER (Non-split, Unified Clean Card) */}
+      <main className="flex-1 flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 relative">
+        
+        {/* Subtle decorative background ambient glow */}
+        <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-emerald-100/50 to-transparent pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10">
+          
+          {/* Card Container */}
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden">
+            
+            {/* Top Brand Green Accent Strip */}
+            <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-[#1b5e20] to-emerald-700" />
+
+            <div className="p-7 sm:p-9 space-y-6">
+              
+              {/* Card Header with Brand Logo */}
+              <div className="text-center space-y-2">
+                <div className="inline-flex justify-center p-2 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-sm mb-1">
+                  <img
+                    src="/logo.png"
+                    alt="Grihalakshmi Logo"
+                    className="w-14 h-14 object-contain"
+                  />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Sign In to Your Workspace
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Owner &amp; Field Staff Digital Ledger
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleLogin} className="space-y-4">
+                
+                {/* Mobile or Email Identifier */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Registered Mobile or Email
+                  </label>
+                  <div className="relative group">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-emerald-700 transition-colors" />
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      autoComplete="username"
+                      placeholder="e.g. 9876543210 or staff mobile"
+                      value={loginData.identifier}
+                      onChange={(e) =>
+                        setLoginData({ ...loginData, identifier: e.target.value })
+                      }
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10 focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative group">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-emerald-700 transition-colors" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      value={loginData.password}
+                      onChange={(e) =>
+                        setLoginData({ ...loginData, password: e.target.value })
+                      }
+                      className="w-full pl-10 pr-11 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10 focus:outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full mt-2 group flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-[#1b5e20] hover:bg-[#144c19] text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99]"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Verifying Credentials...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign In to Ledger</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </button>
+
+                {/* Access Info Box */}
+                <div className="pt-2">
+                  <div className="rounded-xl bg-emerald-50/80 border border-emerald-100 p-3.5 flex items-start gap-2.5 text-xs text-emerald-900">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <p className="leading-relaxed">
+                      <span className="font-bold">Staff or Admin?</span> Log in with your registered phone number. Field accounts automatically open the Customer Directory.
+                    </p>
+                  </div>
+                </div>
+
+              </form>
+
+            </div>
+
+            {/* Bottom Card Footer */}
+            <div className="px-7 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                Live Cloud Ledger
+              </span>
+              <span>v2.4 Production</span>
+            </div>
+
+          </div>
+
+          {/* Quick Notice under card */}
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Dedicated system for Grihalakshmi Food Products • 100% Data Protection
+          </p>
+
+        </div>
+
+      </main>
+
+      {/* 3. BOTTOM FOOTER */}
+      <footer className="py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
+        © {new Date().getFullYear()} Grihalakshmi Food Products • Simplified Field Ledger System
+      </footer>
+
     </div>
   );
 }
+
+export default Login;

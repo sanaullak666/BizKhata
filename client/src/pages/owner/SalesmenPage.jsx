@@ -352,7 +352,7 @@ export function SalesmenPage() {
               </label>
               <input
                 type="email"
-                placeholder="salesman@khataflow.com"
+                placeholder="salesman@grihalakshmi.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"

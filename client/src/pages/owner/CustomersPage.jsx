@@ -82,7 +82,7 @@ export function CustomersPage() {
   const handleExportCSV = async () => {
     try {
       const blob = await api.get('/backup/export-csv/customers');
-      downloadBlob(blob, `KhataFlow-Customers-${new Date().toISOString().slice(0, 10)}.csv`);
+      downloadBlob(blob, `Grihalakshmi-Customers-${new Date().toISOString().slice(0, 10)}.csv`);
       showToast('Customers exported to CSV!', 'success');
     } catch (e) {
       showToast('Failed to export CSV', 'error');

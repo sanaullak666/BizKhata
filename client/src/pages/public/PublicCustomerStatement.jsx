@@ -67,9 +67,11 @@ export function PublicCustomerStatement() {
         {/* Top Header Card */}
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
-              <Sparkles className="w-5 h-5" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Grihalakshmi Logo" 
+              className="h-11 w-11 rounded-xl object-contain bg-white shadow-sm p-0.5 border border-slate-200"
+            />
             <div>
               <h1 className="text-xl font-extrabold text-slate-900">{business.name}</h1>
               <p className="text-xs text-slate-500">
@@ -188,7 +190,7 @@ export function PublicCustomerStatement() {
 
           {/* Footer Notice */}
           <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
-            <p>Official Digital Statement issued via KhataFlow Platform.</p>
+            <p>Official Digital Statement issued by Grihalakshmi Food Products.</p>
             <p>UPI for settlement: <strong className="font-mono text-slate-800">{business.upi_id}</strong></p>
           </div>
         </div>

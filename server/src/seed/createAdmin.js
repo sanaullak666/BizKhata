@@ -15,8 +15,8 @@ async function createAdmin() {
     ON DUPLICATE KEY UPDATE name = VALUES(name)
   `).run(
     bizId,
-    'BizKhata Commercial Enterprise',
-    'Wholesale & Distribution Digital Ledger',
+    'Grihalakshmi Food Products',
+    'Food Products Wholesale & Distribution Digital Ledger',
     'Main Commercial Hub',
     'Mumbai',
     'Maharashtra',

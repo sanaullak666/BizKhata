@@ -74,10 +74,17 @@ export function PublicReceiptView() {
         </div>
 
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-lg font-black text-slate-900">{business.name}</h2>
-            <p className="text-xs text-slate-500">{business.address}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Phone: {business.phone} • GSTIN: {business.gstin}</p>
+          <div className="border-b border-slate-100 pb-3 flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="Grihalakshmi Logo" 
+              className="h-10 w-10 rounded-xl object-contain bg-white shadow-sm p-0.5 border border-slate-200"
+            />
+            <div>
+              <h2 className="text-lg font-black text-slate-900">{business.name}</h2>
+              <p className="text-xs text-slate-500">{business.address}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Phone: {business.phone} • GSTIN: {business.gstin}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
