@@ -8,7 +8,7 @@ import { CustomerStatementModal } from '../../components/statement/CustomerState
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { 
-  BookOpen, Edit2, Search, Filter, FileText, Plus, 
+  Home, BookOpen, Edit2, Search, Filter, FileText, Plus, 
   ArrowLeft, Phone, Trash2, Wallet, 
   Share2, Check, Download, AlertCircle, Calendar, X,
   LogOut, Shield, RefreshCw, Paperclip, Receipt, Eye,
@@ -58,6 +58,12 @@ export function KhatabookDashboard() {
   const [showStatementModal, setShowStatementModal] = useState(false);
   const [statementParty, setStatementParty] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Mobile adaptive layout states
+  const [mobileTab, setMobileTab] = useState('parties'); // 'home' | 'parties' | 'more'
+  const [mobileViewMode, setMobileViewMode] = useState('list'); // 'list' | 'detail'
+  const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   // Selected party for right panel detail / ledger
   const [selectedParty, setSelectedParty] = useState(null);
@@ -349,8 +355,11 @@ export function KhatabookDashboard() {
   }, [activeTab]);
 
   // Select Party for Sidepanel Details
-  const selectPartyDetails = async (party, type) => {
+  const selectPartyDetails = async (party, type, isUserClick = false) => {
     setSelectedParty({ ...party, partyType: type });
+    if (isUserClick) {
+      setMobileViewMode('detail');
+    }
     setLoadingLedger(true);
     try {
       if (type === 'customer') {
@@ -838,7 +847,8 @@ export function KhatabookDashboard() {
       {/* 1. TOP NAVIGATION HEADER (Matching desktop_khata_simplified_grihalakshmi_food_products.html) */}
       <header className="bg-[#1b5e20] text-white shadow-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          {/* DESKTOP & TABLET TOP NAVIGATION HEADER */}
+          <div className="hidden md:flex items-center justify-between h-16">
             
             {/* Brand Identity & Business Switcher */}
             <div className="flex items-center space-x-3">
@@ -1001,14 +1011,64 @@ export function KhatabookDashboard() {
             </div>
 
           </div>
+
+          {/* DEDICATED PURPOSE-BUILT MOBILE HEADER (Visible only on screens < 768px) */}
+          <div className="md:hidden flex items-center justify-between h-14">
+            <div className="flex items-center space-x-2.5">
+              <img 
+                src="/logo.png" 
+                alt="Grihalakshmi Logo" 
+                className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-white/30 shadow-xs shrink-0"
+              />
+              <div 
+                onClick={() => setShowEditBusinessModal(true)}
+                className="cursor-pointer"
+              >
+                <h1 className="text-sm font-bold text-white tracking-tight leading-none truncate max-w-[190px]">
+                  {businessInfo.name}
+                </h1>
+                <p className="text-[10px] text-emerald-200 mt-0.5 truncate max-w-[190px]">
+                  Official Ledger &amp; Field Staff
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button 
+                onClick={loadAll}
+                className="p-1.5 rounded-lg bg-emerald-900/60 text-emerald-100 border border-emerald-700/50 transition active:scale-95"
+                title="Live Sync"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse block" />
+              </button>
+
+              <button
+                onClick={() => {
+                  fetchSalesmen();
+                  setShowAddSalesmanModal(true);
+                }}
+                className="p-1.5 rounded-lg bg-white/10 text-emerald-100 hover:bg-white/20 transition active:scale-95"
+                title="Register Salesman"
+              >
+                <UserPlus className="w-4 h-4 text-emerald-200" />
+              </button>
+
+              <button
+                onClick={() => setMobileTab('more')}
+                className="w-8 h-8 rounded-full bg-emerald-100 text-[#1b5e20] font-bold text-xs flex items-center justify-center border border-white/40 shadow-xs active:scale-95"
+              >
+                GL
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         
-        {/* SUMMARY BANNER (Top Khatabook Summary Card) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+        {/* DESKTOP & TABLET SUMMARY BANNER (Hidden on Mobile) */}
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 py-5 px-6">
             
             {/* You will give */}
@@ -1112,11 +1172,249 @@ export function KhatabookDashboard() {
           </div>
         </div>
 
-        {/* MAIN 2-COLUMN DESKTOP INTERFACE LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* MOBILE DASHBOARD VIEW (Shown only on mobile when mobileTab === 'home') */}
+        {mobileTab === 'home' && (
+          <div className="md:hidden space-y-4 pb-24 animate-in fade-in">
+            {/* Mobile Header Greeting */}
+            <div className="p-4 bg-gradient-to-br from-[#1b5e20] to-[#144c19] text-white rounded-2xl shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-emerald-200 font-medium">
+                  {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'},
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-semibold text-white">
+                  Live Ledger
+                </span>
+              </div>
+              <h2 className="text-lg font-bold leading-tight">{user?.full_name || 'Admin'}</h2>
+              <p className="text-xs text-emerald-100 mt-0.5">{businessInfo.name}</p>
+            </div>
+
+            {/* Financial Summary Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <div 
+                onClick={() => { setFilterType('will_get'); setMobileTab('parties'); setMobileViewMode('list'); }}
+                className="p-3.5 bg-red-50 border border-red-200/80 rounded-2xl shadow-xs cursor-pointer active:scale-98 transition"
+              >
+                <span className="text-[11px] font-bold text-red-600 uppercase tracking-tight">You Will Get</span>
+                <p className="text-xl font-black text-red-700 mt-1 font-mono">
+                  ₹ {customerSummary.willGet.toLocaleString('en-IN')}
+                </p>
+                <span className="text-[10px] text-red-500 mt-0.5 block font-medium">From {customers.filter(c => c.current_balance > 0).length} customers</span>
+              </div>
+
+              <div 
+                onClick={() => { setFilterType('will_give'); setMobileTab('parties'); setMobileViewMode('list'); }}
+                className="p-3.5 bg-emerald-50 border border-emerald-200/80 rounded-2xl shadow-xs cursor-pointer active:scale-98 transition"
+              >
+                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-tight">You Will Give</span>
+                <p className="text-xl font-black text-emerald-800 mt-1 font-mono">
+                  ₹ {supplierSummary.willGive.toLocaleString('en-IN')}
+                </p>
+                <span className="text-[10px] text-emerald-600 mt-0.5 block font-medium">To {suppliers.filter(s => s.current_balance > 0).length} suppliers</span>
+              </div>
+            </div>
+
+            {/* Quick Action Grid */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Quick Actions</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <button
+                  onClick={() => setShowAddCustomerModal(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 hover:bg-emerald-50 transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mb-1">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-700">+ Customer</span>
+                </button>
+
+                <button
+                  onClick={() => setShowAddSupplierModal(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 hover:bg-emerald-50 transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-full bg-[#006978]/10 text-[#006978] flex items-center justify-center mb-1">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-700">+ Supplier</span>
+                </button>
+
+                <button
+                  onClick={() => setShowCashbookModal(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 hover:bg-blue-50 transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mb-1">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-700">Cashbook</span>
+                </button>
+
+                <button
+                  onClick={() => setShowReportsModal(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 hover:bg-amber-50 transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-1">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-700">Reports</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Top Due Accounts to Collect */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Pending Recoveries</h3>
+                <button
+                  onClick={() => { setFilterType('will_get'); setMobileTab('parties'); setMobileViewMode('list'); }}
+                  className="text-[11px] font-bold text-emerald-700"
+                >
+                  View All &gt;
+                </button>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {customers.filter(c => c.current_balance > 0).slice(0, 4).length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400">
+                    No pending collections. All accounts are settled!
+                  </div>
+                ) : (
+                  customers.filter(c => c.current_balance > 0).slice(0, 4).map(c => (
+                    <div 
+                      key={c.id}
+                      onClick={() => {
+                        selectPartyDetails(c, 'customer', true);
+                        setMobileTab('parties');
+                      }}
+                      className="p-3 flex items-center justify-between active:bg-slate-50"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                          {getInitials(c.name)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 leading-tight">{c.name}</p>
+                          <p className="text-[10px] text-slate-400">{c.city || c.address || 'Customer'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-red-600 font-mono">₹ {Number(c.current_balance).toLocaleString('en-IN')}</p>
+                        <span className="text-[9px] text-red-500 font-semibold">Due</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MOBILE MORE MENU (Shown on mobile when mobileTab === 'more') */}
+        {mobileTab === 'more' && (
+          <div className="md:hidden space-y-3 pb-24 animate-in fade-in">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
+              <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#1b5e20] font-bold text-base flex items-center justify-center">
+                  GL
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{user?.full_name || 'Admin User'}</h3>
+                  <p className="text-xs text-slate-500 font-mono">{user?.mobile || user?.email}</p>
+                  <span className="inline-block px-2 py-0.5 mt-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px] uppercase">
+                    {user?.role || 'Owner'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs">
+                <button
+                  onClick={() => { fetchSalesmen(); setShowSalesmenModal(true); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-slate-800 font-semibold flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span>Manage Salesmen ({salesmen.length})</span>
+                  </div>
+                  <span className="text-slate-400 font-mono">&gt;</span>
+                </button>
+
+                <button
+                  onClick={() => { fetchSalesmen(); setShowAddSalesmanModal(true); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-slate-800 font-semibold flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <UserPlus className="w-4 h-4 text-emerald-600" />
+                    <span>+ Register New Salesman</span>
+                  </div>
+                  <span className="text-slate-400 font-mono">&gt;</span>
+                </button>
+
+                <button
+                  onClick={() => setShowEditBusinessModal(true)}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-slate-800 font-semibold flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Edit2 className="w-4 h-4 text-blue-600" />
+                    <span>Business Settings &amp; UPI</span>
+                  </div>
+                  <span className="text-slate-400 font-mono">&gt;</span>
+                </button>
+
+                <button
+                  onClick={handleDownloadBackup}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-slate-800 font-semibold flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Download className="w-4 h-4 text-slate-600" />
+                    <span>Download Database Backup</span>
+                  </div>
+                  <span className="text-slate-400 font-mono">&gt;</span>
+                </button>
+
+                <button
+                  onClick={logout}
+                  className="w-full text-left p-3 rounded-xl hover:bg-rose-50 text-rose-600 font-semibold flex items-center justify-between border-t border-slate-100 pt-3"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </div>
+                  <span className="font-mono">&gt;</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MOBILE PARTIES SEGMENTED CONTROL (Visible only on mobile when mobileTab === 'parties' and mobileViewMode === 'list') */}
+        {mobileTab === 'parties' && mobileViewMode === 'list' && (
+          <div className="md:hidden flex items-center bg-slate-200/90 p-1 rounded-xl mb-3 shadow-inner">
+            <button
+              onClick={() => { setActiveTab('customers'); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                activeTab === 'customers' ? 'bg-[#1b5e20] text-white shadow-sm' : 'text-slate-600'
+              }`}
+            >
+              CUSTOMERS ({customers.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab('suppliers'); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                activeTab === 'suppliers' ? 'bg-[#006978] text-white shadow-sm' : 'text-slate-600'
+              }`}
+            >
+              SUPPLIERS ({suppliers.length})
+            </button>
+          </div>
+        )}
+
+        {/* MAIN 2-COLUMN ADAPTIVE LAYOUT */}
+        <div className={`grid grid-cols-1 md:grid-cols-12 md:gap-4 lg:gap-6 pb-20 md:pb-6 ${
+          mobileTab !== 'parties' ? 'hidden md:grid' : ''
+        }`}>
           
-          {/* LEFT PANEL: PARTIES LISTING SECTION (lg:col-span-8) */}
-          <section className="lg:col-span-8 space-y-4">
+          {/* LEFT PANEL: PARTIES LISTING SECTION (md:col-span-6 lg:col-span-7 xl:col-span-8) */}
+          <section className={`md:col-span-6 lg:col-span-7 xl:col-span-8 space-y-4 ${
+            mobileTab !== 'parties' ? 'hidden md:block' : mobileViewMode === 'detail' ? 'hidden md:block' : 'block'
+          }`}>
             
             {/* Search & Quick Action Toolbar */}
             <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1136,17 +1434,23 @@ export function KhatabookDashboard() {
                 />
                 <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center">
                   <button 
-                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                    className="text-slate-400 hover:text-slate-600 p-1" 
+                    onClick={() => {
+                      if (window.innerWidth < 768) {
+                        setShowFilterSheet(true);
+                      } else {
+                        setShowFilterDropdown(!showFilterDropdown);
+                      }
+                    }}
+                    className={`p-1 rounded-md transition ${filterType !== 'all' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400 hover:text-slate-600'}`} 
                     title="Filter list"
                   >
                     <Filter className="h-4 w-4" />
                   </button>
                 </div>
 
-                {/* Filter Dropdown */}
+                {/* Desktop Filter Dropdown */}
                 {showFilterDropdown && (
-                  <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-40 text-xs">
+                  <div className="hidden md:block absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-40 text-xs">
                     <button
                       onClick={() => { setFilterType('all'); setShowFilterDropdown(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg font-semibold ${filterType === 'all' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600'}`}
@@ -1220,48 +1524,127 @@ export function KhatabookDashboard() {
                     return (
                       <div
                         key={item.id}
-                        onClick={() => selectPartyDetails(item, activeTab === 'customers' ? 'customer' : 'supplier')}
-                        className={`p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer border-l-4 ${
-                          isSelected ? 'border-emerald-600 bg-slate-50/80' : 'border-transparent'
+                        onClick={() => selectPartyDetails(item, activeTab === 'customers' ? 'customer' : 'supplier', true)}
+                        className={`transition cursor-pointer border-l-4 ${
+                          isSelected ? 'border-emerald-600 bg-emerald-50/20' : 'border-transparent'
                         }`}
                       >
-                        <div className="flex items-center space-x-3.5">
-                          <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm ${
-                            isSelected 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                              : 'bg-slate-100 text-slate-700 border border-slate-200'
-                          }`}>
-                            {initials}
+                        {/* DESKTOP & TABLET ROW (hidden on screens < 640px) */}
+                        <div className="hidden sm:flex p-4 items-center justify-between hover:bg-slate-50 transition">
+                          <div className="flex items-center space-x-3.5">
+                            <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm ${
+                              isSelected 
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}>
+                              {initials}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-900 leading-tight">
+                                {item.name}
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {item.city ? `${item.city} • ` : ''}{getRelativeTime(item.updated_at || item.created_at)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-slate-900 leading-tight">
-                              {item.name}
-                            </h4>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {item.city ? `${item.city} • ` : ''}{getRelativeTime(item.updated_at || item.created_at)}
-                            </p>
+
+                          <div className="text-right">
+                            <div className={`text-base font-bold ${
+                              rawBal === 0 ? 'text-slate-600' : willGet ? 'text-red-600' : 'text-emerald-700'
+                            }`}>
+                              ₹ {Math.abs(rawBal).toLocaleString('en-IN')}
+                            </div>
+                            {rawBal !== 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  sendWhatsAppReminder(item, activeTab === 'customers');
+                                }}
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center justify-end space-x-0.5 mt-0.5"
+                              >
+                                <span>{activeTab === 'customers' ? 'REMIND' : 'REQUEST'}</span>
+                                <span className="font-mono text-[10px]">&gt;</span>
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        <div className="text-right">
-                          <div className={`text-base font-bold ${
-                            rawBal === 0 ? 'text-slate-600' : willGet ? 'text-red-600' : 'text-emerald-700'
-                          }`}>
-                            ₹ {Math.abs(rawBal).toLocaleString('en-IN')}
+                        {/* MOBILE DEDICATED PURPOSE-BUILT CARD (sm:hidden) */}
+                        <div className="sm:hidden p-3.5 space-y-2.5 active:bg-slate-50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200">
+                                {initials}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                                  {item.name}
+                                </h4>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  {item.mobile ? `+91 ${item.mobile}` : item.city || item.address || 'Active account'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className={`text-sm font-black font-mono block ${
+                                rawBal === 0 ? 'text-slate-600' : willGet ? 'text-red-600' : 'text-emerald-700'
+                              }`}>
+                                ₹ {Math.abs(rawBal).toLocaleString('en-IN')}
+                              </span>
+                              <span className={`text-[10px] font-bold uppercase tracking-tight ${
+                                rawBal === 0 ? 'text-slate-400' : willGet ? 'text-red-500' : 'text-emerald-600'
+                              }`}>
+                                {rawBal === 0 ? 'Settled' : willGet ? 'Due (Len)' : 'Advance (Den)'}
+                              </span>
+                            </div>
                           </div>
-                          {rawBal !== 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                sendWhatsAppReminder(item, activeTab === 'customers');
-                              }}
-                              className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center justify-end space-x-0.5 mt-0.5"
-                            >
-                              <span>{activeTab === 'customers' ? 'REMIND' : 'REQUEST'}</span>
-                              <span className="font-mono text-[10px]">&gt;</span>
-                            </button>
-                          )}
+
+                          {/* Mobile Action Bar */}
+                          <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-xs">
+                            <div className="flex items-center space-x-1.5">
+                              {item.mobile && (
+                                <a
+                                  href={`tel:${item.mobile}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold text-[11px] active:bg-slate-200"
+                                >
+                                  <Phone className="w-3 h-3 text-slate-500" />
+                                  <span>Call</span>
+                                </a>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  sendWhatsAppReminder(item, activeTab === 'customers');
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-semibold text-[11px] active:bg-emerald-100"
+                              >
+                                <Share2 className="w-3 h-3 text-emerald-600" />
+                                <span>WhatsApp</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center space-x-1.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStatementParty({ ...item, partyType: activeTab === 'customers' ? 'customer' : 'supplier' });
+                                  setShowStatementModal(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-slate-500 hover:text-slate-800 font-semibold text-[11px]"
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span>Statement</span>
+                              </button>
+                              <span className="text-emerald-700 font-bold text-xs flex items-center">
+                                Ledger &gt;
+                              </span>
+                            </div>
+                          </div>
                         </div>
+
                       </div>
                     );
                   })
@@ -1282,13 +1665,49 @@ export function KhatabookDashboard() {
 
           </section>
 
-          {/* RIGHT PANEL: PARTY LEDGER DETAIL / MINISTATEMENT (lg:col-span-4) */}
-          <aside className="lg:col-span-4">
+          {/* RIGHT PANEL: PARTY LEDGER DETAIL / MINISTATEMENT */}
+          <aside className={`md:col-span-6 lg:col-span-5 xl:col-span-4 ${
+            mobileTab !== 'parties' ? 'hidden md:block' : mobileViewMode === 'detail' ? 'block' : 'hidden md:block'
+          }`}>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-20">
               
               {selectedParty ? (
                 <>
-                  {/* Selected Party Header */}
+                  {/* MOBILE HEADER (Visible only on mobile when inspecting party ledger) */}
+                  <div className="md:hidden flex items-center justify-between p-3.5 bg-gradient-to-r from-[#1b5e20] to-[#144c19] text-white">
+                    <button
+                      type="button"
+                      onClick={() => setMobileViewMode('list')}
+                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white/20 active:bg-white/30 text-white font-bold text-xs transition"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Back</span>
+                    </button>
+                    <div className="text-center font-bold text-xs truncate max-w-[150px]">
+                      {selectedParty.name}
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {selectedParty.mobile && (
+                        <a
+                          href={`tel:${selectedParty.mobile}`}
+                          className="p-1.5 rounded-lg bg-white/20 active:bg-white/30 text-white"
+                          title="Call"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => sendWhatsAppReminder(selectedParty, selectedParty.partyType === 'customer')}
+                        className="p-1.5 rounded-lg bg-white/20 active:bg-white/30 text-white"
+                        title="WhatsApp"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selected Party Header (Desktop & Full details) */}
                   <div className="p-4 bg-slate-50/70 border-b border-slate-200">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
@@ -1522,6 +1941,30 @@ export function KhatabookDashboard() {
                     </div>
 
                   </div>
+
+                  {/* MOBILE STICKY BOTTOM ACTION BAR (Gave / Got) */}
+                  <div className="fixed bottom-0 inset-x-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 md:hidden flex gap-2.5 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxModalType('GAVE');
+                        setShowAddTxModal(true);
+                      }}
+                      className="flex-1 py-3 bg-rose-600 active:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-98"
+                    >
+                      <span>YOU GAVE ₹</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxModalType('GOT');
+                        setShowAddTxModal(true);
+                      }}
+                      className="flex-1 py-3 bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-98"
+                    >
+                      <span>YOU GOT ₹</span>
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div className="p-10 text-center text-xs text-slate-400">
@@ -1535,8 +1978,8 @@ export function KhatabookDashboard() {
         </div>
       </main>
 
-      {/* 3. MINIMAL FOOTER */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-4">
+      {/* 3. MINIMAL FOOTER (Hidden on mobile to yield room for mobile bottom nav) */}
+      <footer className="mt-auto border-t border-slate-200 bg-white py-4 hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
           <div className="flex items-center space-x-2">
             <span className="font-medium text-slate-700">{businessInfo.name}</span>
@@ -1559,10 +2002,169 @@ export function KhatabookDashboard() {
         </div>
       </footer>
 
+      {/* 4. MOBILE FLOATING ACTION BUTTON (+ FAB) WITH SPEED DIAL */}
+      {mobileViewMode === 'list' && (
+        <div className="fixed bottom-20 right-4 z-40 md:hidden flex flex-col items-end">
+          {showFabMenu && (
+            <div className="mb-3 flex flex-col gap-2.5 items-end animate-in fade-in slide-in-from-bottom-2">
+              <button
+                type="button"
+                onClick={() => { setShowFabMenu(false); setShowAddCustomerModal(true); }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#9d174d] text-white rounded-full shadow-xl text-xs font-bold transition active:scale-95"
+              >
+                <span>+ Add Customer</span>
+                <UserPlus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowFabMenu(false); setShowAddSupplierModal(true); }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#006978] text-white rounded-full shadow-xl text-xs font-bold transition active:scale-95"
+              >
+                <span>+ Add Supplier</span>
+                <Plus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowFabMenu(false); setShowCashbookModal(true); }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-white rounded-full shadow-xl text-xs font-bold transition active:scale-95"
+              >
+                <span>Cashbook Entry</span>
+                <Wallet className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowFabMenu(!showFabMenu)}
+            className={`w-14 h-14 rounded-full bg-emerald-700 text-white shadow-xl flex items-center justify-center font-bold text-2xl transition-all active:scale-95 border-2 border-white/60 ${
+              showFabMenu ? 'rotate-45 bg-slate-800' : ''
+            }`}
+            aria-label="Add New Entry"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </div>
+      )}
+
+      {/* 5. MOBILE BOTTOM NAVIGATION BAR */}
+      {mobileViewMode === 'list' && (
+        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 md:hidden shadow-lg flex items-center justify-around">
+          <button 
+            type="button"
+            onClick={() => { setMobileTab('home'); setMobileViewMode('list'); }}
+            className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+              mobileTab === 'home' ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Home className="w-5 h-5 mb-0.5" />
+            <span>Home</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => { setMobileTab('parties'); setMobileViewMode('list'); }}
+            className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+              mobileTab === 'parties' ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 mb-0.5" />
+            <span>Parties</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setShowCashbookModal(true)}
+            className="flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-700 transition"
+          >
+            <Wallet className="w-5 h-5 mb-0.5" />
+            <span>Cashbook</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setShowReportsModal(true)}
+            className="flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-700 transition"
+          >
+            <BarChart2 className="w-5 h-5 mb-0.5" />
+            <span>Reports</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => { setMobileTab('more'); setMobileViewMode('list'); }}
+            className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold transition ${
+              mobileTab === 'more' ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Users className="w-5 h-5 mb-0.5" />
+            <span>More</span>
+          </button>
+        </nav>
+      )}
+
+      {/* 6. MOBILE FILTER BOTTOM SHEET */}
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-50 bg-black/60 md:hidden flex items-end animate-in fade-in">
+          <div className="bg-white w-full rounded-t-3xl p-5 space-y-4 shadow-2xl">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-1" />
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800">Filter {activeTab === 'customers' ? 'Customers' : 'Suppliers'}</h3>
+              <button 
+                type="button"
+                onClick={() => setShowFilterSheet(false)} 
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { setFilterType('all'); setShowFilterSheet(false); }}
+                className={`w-full py-3 px-4 rounded-xl text-left font-semibold text-xs flex items-center justify-between transition ${
+                  filterType === 'all' ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-slate-50 text-slate-700'
+                }`}
+              >
+                <span>All Accounts ({activeTab === 'customers' ? customers.length : suppliers.length})</span>
+                {filterType === 'all' && <Check className="w-4 h-4 text-emerald-700" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setFilterType('will_get'); setShowFilterSheet(false); }}
+                className={`w-full py-3 px-4 rounded-xl text-left font-semibold text-xs flex items-center justify-between transition ${
+                  filterType === 'will_get' ? 'bg-red-50 text-red-700 border border-red-300' : 'bg-slate-50 text-slate-700'
+                }`}
+              >
+                <span>You Will Get (Len / Due)</span>
+                {filterType === 'will_get' && <Check className="w-4 h-4 text-red-600" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setFilterType('will_give'); setShowFilterSheet(false); }}
+                className={`w-full py-3 px-4 rounded-xl text-left font-semibold text-xs flex items-center justify-between transition ${
+                  filterType === 'will_give' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-slate-50 text-slate-700'
+                }`}
+              >
+                <span>You Will Give (Den / Payable)</span>
+                {filterType === 'will_give' && <Check className="w-4 h-4 text-emerald-600" />}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setFilterType('all'); setShowFilterSheet(false); }}
+              className="w-full py-2.5 text-center text-xs font-semibold text-slate-500 hover:text-slate-700"
+            >
+              Reset to All
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD CUSTOMER */}
       {showAddCustomerModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">Add New Customer</h3>
               <button onClick={() => setShowAddCustomerModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -1625,8 +2227,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: ADD SUPPLIER */}
       {showAddSupplierModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">Add New Supplier</h3>
               <button onClick={() => setShowAddSupplierModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -1689,8 +2292,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: ADD TRANSACTION (GIVE OR GOT) */}
       {showAddTxModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className={`text-base font-bold uppercase ${txModalType === 'GAVE' ? 'text-rose-600' : 'text-emerald-600'}`}>
                 {txModalType === 'GAVE' ? 'You Gave to' : 'You Got from'} {selectedParty?.name}
@@ -1850,8 +2454,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: CASHBOOK VIEW & ENTRY */}
       {showCashbookModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-blue-600" />
@@ -1887,7 +2492,7 @@ export function KhatabookDashboard() {
                   setCashModalType('in');
                   setShowAddCashEntry(true);
                 }}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm text-center"
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm text-center active:scale-98"
               >
                 + RECORD CASH IN
               </button>
@@ -1896,7 +2501,7 @@ export function KhatabookDashboard() {
                   setCashModalType('out');
                   setShowAddCashEntry(true);
                 }}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm text-center"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm text-center active:scale-98"
               >
                 - RECORD CASH OUT
               </button>
@@ -1945,8 +2550,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: CASH ENTRY FORM */}
       {showAddCashEntry && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className={`text-base font-bold uppercase ${cashModalType === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {editingCashEntry ? 'Edit Cash Entry' : cashModalType === 'in' ? 'Record Cash In (+)' : 'Record Cash Out (-)'}
@@ -2020,8 +2626,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: EDIT BUSINESS DETAILS */}
       {showEditBusinessModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">Business Profile</h3>
               <button onClick={() => setShowEditBusinessModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -2093,8 +2700,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: EDIT PARTY (CUSTOMER / SUPPLIER) */}
       {showEditPartyModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 Edit {activeTab === 'customers' ? 'Customer' : 'Supplier'} Details
@@ -2164,8 +2772,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: EDIT TRANSACTION ENTRY */}
       {showEditTxModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 Edit Transaction Entry
@@ -2278,8 +2887,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: ADD SALESMAN REGISTRATION */}
       {showAddSalesmanModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
@@ -2392,8 +3002,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: MANAGE SALESMEN LIST */}
       {showSalesmenModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
@@ -2491,8 +3102,9 @@ export function KhatabookDashboard() {
 
       {/* MODAL: EDIT SALESMAN */}
       {showEditSalesmanModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
